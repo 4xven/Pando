@@ -21,6 +21,7 @@ body {
   width: 100%;
   padding: 24px 80px; /* more breathing space */
   z-index: 100;
+  background-color: #3a2414;
 }
 
 /* CONTAINER */
@@ -113,11 +114,13 @@ body {
 
   background: linear-gradient(135deg, #3a2414, #5a3a21);
   color: #f5e6d3;
+  background-color: #5a3a21; /* 🔥 NEW COLOR */
 
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+
 
   border-bottom-left-radius: 80px;
   border-bottom-right-radius: 80px;
