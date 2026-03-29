@@ -1,5 +1,5 @@
 "use client";
- 
+
 import {
   MapPin,
   Phone,
@@ -11,36 +11,51 @@ import {
   HelpCircle,
   MessageSquare,
 } from "lucide-react";
- 
+
 export default function ContactPage() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     alert("Message sent!");
   };
- 
+
   return (
-    <div className="min-h-screen bg-[#e8d8c0] flex items-center justify-content-center px-4 py-16">
-      
-      <div className="w-full max-w-5xl mx-auto">
-        
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#E8DFD3",
+        paddingTop: "120px",
+        paddingBottom: "80px",
+        paddingLeft: "24px",
+        paddingRight: "24px",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: "900px", margin: "0 auto" }}>
+
         {/* TITLE */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-[#3a2414] mb-3">
+        <div style={{ textAlign: "center", marginBottom: "48px" }}>
+          <h1
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              color: "#3a2414",
+              marginBottom: "12px",
+              fontFamily: "Georgia, serif",
+            }}
+          >
             Get in Touch
           </h1>
-          <p className="text-[#6d5d51] text-sm">
-            We&apos;d love to hear from you. Send us a message or{" "}
-            <br className="hidden md:block" />
-            visit our store.
+          <p style={{ color: "#6d5d51", fontSize: "0.9rem", lineHeight: 1.6 }}>
+            We&apos;d love to hear from you. Send us a message or visit our store.
           </p>
         </div>
- 
+
         {/* MAIN GRID */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "3fr 2fr",
             gap: "2rem",
+            alignItems: "start",
           }}
         >
           {/* FORM */}
@@ -53,7 +68,7 @@ export default function ContactPage() {
             }}
           >
             <form onSubmit={handleSendMessage}>
- 
+
               {/* NAME + EMAIL row */}
               <div
                 style={{
@@ -102,11 +117,12 @@ export default function ContactPage() {
                         fontSize: "0.85rem",
                         outline: "none",
                         color: "#3a2414",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                 </div>
- 
+
                 {/* Email */}
                 <div>
                   <label
@@ -146,12 +162,13 @@ export default function ContactPage() {
                         fontSize: "0.85rem",
                         outline: "none",
                         color: "#3a2414",
+                        boxSizing: "border-box",
                       }}
                     />
                   </div>
                 </div>
               </div>
- 
+
               {/* SUBJECT */}
               <div style={{ marginBottom: "1.5rem" }}>
                 <label
@@ -191,11 +208,12 @@ export default function ContactPage() {
                       fontSize: "0.85rem",
                       outline: "none",
                       color: "#3a2414",
+                      boxSizing: "border-box",
                     }}
                   />
                 </div>
               </div>
- 
+
               {/* MESSAGE */}
               <div style={{ marginBottom: "1.5rem" }}>
                 <label
@@ -235,11 +253,12 @@ export default function ContactPage() {
                       outline: "none",
                       resize: "none",
                       color: "#3a2414",
+                      boxSizing: "border-box",
                     }}
                   />
                 </div>
               </div>
- 
+
               {/* BUTTON */}
               <button
                 type="submit"
@@ -260,12 +279,10 @@ export default function ContactPage() {
                   transition: "background 0.2s",
                 }}
                 onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "#2a1a0f")
+                  ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "#2a1a0f")
                 }
                 onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "#3a2414")
+                  ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "#3a2414")
                 }
               >
                 Send Message
@@ -273,7 +290,7 @@ export default function ContactPage() {
               </button>
             </form>
           </div>
- 
+
           {/* STORE INFO */}
           <div
             style={{
@@ -293,9 +310,9 @@ export default function ContactPage() {
             >
               Store Information
             </h3>
- 
+
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
- 
+
               {/* ADDRESS */}
               <div style={{ display: "flex", gap: "1rem" }}>
                 <div
@@ -321,7 +338,7 @@ export default function ContactPage() {
                   </p>
                 </div>
               </div>
- 
+
               {/* PHONE */}
               <div style={{ display: "flex", gap: "1rem" }}>
                 <div
@@ -343,7 +360,7 @@ export default function ContactPage() {
                   <p style={{ color: "#d6c2aa", fontSize: "0.82rem" }}>+63 912 345 6789</p>
                 </div>
               </div>
- 
+
               {/* EMAIL */}
               <div style={{ display: "flex", gap: "1rem" }}>
                 <div
@@ -365,7 +382,7 @@ export default function ContactPage() {
                   <p style={{ color: "#d6c2aa", fontSize: "0.82rem" }}>hello@pandoshoes.ph</p>
                 </div>
               </div>
- 
+
               {/* HOURS */}
               <div style={{ display: "flex", gap: "1rem" }}>
                 <div
@@ -390,7 +407,7 @@ export default function ContactPage() {
                   </p>
                 </div>
               </div>
- 
+
             </div>
           </div>
         </div>

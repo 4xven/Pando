@@ -53,27 +53,94 @@ export default function AboutSection() {
         fontFamily: "'Georgia', serif",
       }}
     >
-      {/* HERO */}
+      {/* HERO — updated colors */}
       <div
         style={{
           width: "100%",
-          background: "linear-gradient(160deg, #3b1f0e 0%, #2a1508 100%)",
-          color: "#f0e6d8",
+          background: "#E8DFD3",
+          color: "#3a2414",
           paddingTop: "100px",
           paddingBottom: "50px",
           textAlign: "center",
           borderRadius: "0 0 28px 28px",
         }}
       >
-        <h2 style={{ fontSize: "2.5rem", marginBottom: "20px", color: "#e8d5bb" }}>
+        <h2 style={{ fontSize: "2.5rem", marginBottom: "20px", color: "#3a2414" }}>
           Our Heritage
         </h2>
 
-        <p style={{ maxWidth: "520px", margin: "0 auto", lineHeight: 1.8 }}>
+        <p style={{ maxWidth: "520px", margin: "0 auto", lineHeight: 1.8, color: "#3a2414" }}>
           Rooted in the heart of Marikina, the Shoe Capital of the Philippines.
           We are dedicated to preserving the rich cultural identity of local
           shoemaking while adapting to modern e-commerce trends.
         </p>
+      </div>
+
+      {/* BUSINESS OWNER */}
+      <div
+        style={{
+          maxWidth: "900px",
+          margin: "56px auto 0",
+          padding: "0 24px",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "40px",
+          background: "#f3efea",
+          borderRadius: "20px",
+          boxShadow: "0 1px 8px rgba(58,36,20,0.07)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Owner Image */}
+        <div
+          style={{
+            width: "220px",
+            height: "280px",
+            flexShrink: 0,
+            overflow: "hidden",
+            borderRadius: "16px",
+            margin: "28px 0 28px 28px",
+            background: "#2a1508",
+          }}
+        >
+          <Image
+            src="/owner.jpg"
+            alt="Business Owner"
+            width={220}
+            height={280}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+        </div>
+
+        {/* Owner Text */}
+        <div style={{ flex: 1, minWidth: "220px", padding: "28px 28px 28px 0" }}>
+          <p style={{ fontSize: "0.75rem", color: "#8a6a4a", marginBottom: "8px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            Meet the Founder
+          </p>
+
+          <h2 style={{ fontSize: "1.8rem", marginBottom: "12px", color: "#3a2414" }}>
+            Maria Santos
+          </h2>
+
+          <p style={{ fontSize: "0.85rem", lineHeight: 1.8, marginBottom: "12px", color: "#5a3a20" }}>
+            Born and raised in Marikina, Maria grew up watching her father handcraft
+            shoes in their family workshop. With over 20 years of experience in the
+            craft, she founded Pando with a single mission: to bring the artistry of
+            Marikina shoemaking to the world.
+          </p>
+
+          <p style={{ fontSize: "0.85rem", lineHeight: 1.8, color: "#5a3a20" }}>
+            Her deep respect for tradition, combined with a forward-looking vision,
+            has made Pando a bridge between heritage craftsmanship and the modern
+            marketplace — ensuring that the legacy of Marikina's artisans lives on
+            for generations to come.
+          </p>
+        </div>
       </div>
 
       {/* CARDS */}
@@ -112,7 +179,7 @@ export default function AboutSection() {
         ))}
       </div>
 
-      {/* ✅ FIXED BOTTOM SECTION */}
+      {/* BOTTOM SECTION */}
       <div
         style={{
           display: "flex",
