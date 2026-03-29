@@ -14,9 +14,11 @@ export default function Hero() {
           <Image src={shoeImg} alt="Leather shoes" />
 
           {/* Labels */}
-          <span className="label left">FULL GRAIN LEATHER</span>
-          <span className="label right top">EXTRA DURABLE</span>
-          <span className="label right bottom">PADDED FOOTBED</span>
+          <div className="txt">
+            <span className="label left">FULL GRAIN LEATHER</span>
+            <span className="label right top">EXTRA DURABLE</span>
+            <span className="label right bottom">PADDED FOOTBED</span>
+          </div>
         </div>
       </div>
     </section>
