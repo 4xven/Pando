@@ -137,7 +137,7 @@ export default function AboutSection() {
           <p style={{ fontSize: "0.85rem", lineHeight: 1.8, color: "#5a3a20" }}>
             Her deep respect for tradition, combined with a forward-looking vision,
             has made Pando a bridge between heritage craftsmanship and the modern
-            marketplace — ensuring that the legacy of Marikina's artisans lives on
+            marketplace — ensuring that the legacy of Marikinas artisans lives on
             for generations to come.
           </p>
         </div>

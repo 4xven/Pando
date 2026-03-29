@@ -61,7 +61,7 @@ export default function ContactPage() {
           {/* FORM */}
           <div
             style={{
-              backgroundColor: "#f5ede0",
+              backgroundColor: "#f3efea",
               borderRadius: "30px",
               padding: "2rem",
               boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
@@ -104,7 +104,7 @@ export default function ContactPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Juan Dela Cruz"
+                      placeholder="Marven Panoringan"
                       style={{
                         width: "100%",
                         backgroundColor: "#faf7f4",
@@ -149,7 +149,7 @@ export default function ContactPage() {
                     />
                     <input
                       type="email"
-                      placeholder="juan@example.com"
+                      placeholder="marven@example.com"
                       style={{
                         width: "100%",
                         backgroundColor: "#faf7f4",
@@ -333,8 +333,8 @@ export default function ContactPage() {
                   <p style={{ fontWeight: "600", marginBottom: "4px", fontSize: "0.9rem" }}>Address</p>
                   <p style={{ color: "#d6c2aa", fontSize: "0.82rem", lineHeight: "1.6" }}>
                     Pando Shoe Store<br />
-                    Batangas St, Marikina City<br />
-                    Philippines
+                    86 E Jacinto St, Marikina City<br />
+                    1800 Marikina City
                   </p>
                 </div>
               </div>
@@ -379,7 +379,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <p style={{ fontWeight: "600", marginBottom: "4px", fontSize: "0.9rem" }}>Email</p>
-                  <p style={{ color: "#d6c2aa", fontSize: "0.82rem" }}>hello@pandoshoes.ph</p>
+                  <p style={{ color: "#d6c2aa", fontSize: "0.82rem" }}>pandoshoes@gmail.com</p>
                 </div>
               </div>
 
