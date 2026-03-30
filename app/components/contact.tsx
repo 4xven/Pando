@@ -62,7 +62,7 @@ export default function ContactPage() {
           <div
             style={{
               backgroundColor: "#f3efea",
-              borderRadius: "30px",
+              borderRadius: "10px",
               padding: "2rem",
               boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
             }}
@@ -296,9 +296,10 @@ export default function ContactPage() {
             style={{
               background: "linear-gradient(135deg, #3a2414, #5a3a21)",
               color: "#f5e6d3",
-              borderRadius: "30px",
+              borderRadius: "10px",
               padding: "2rem",
               boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+              height: "48.5vh",
             }}
           >
             <h3
@@ -332,7 +333,7 @@ export default function ContactPage() {
                 <div>
                   <p style={{ fontWeight: "600", marginBottom: "4px", fontSize: "0.9rem" }}>Address</p>
                   <p style={{ color: "#d6c2aa", fontSize: "0.82rem", lineHeight: "1.6" }}>
-                    Pando Shoe Store<br />
+                    
                     86 E Jacinto St, Marikina City<br />
                     1800 Marikina City
                   </p>

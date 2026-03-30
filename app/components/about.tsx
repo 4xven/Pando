@@ -12,7 +12,14 @@ interface Card {
 const cards: Card[] = [
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M8 12l2 2 4-4" />
       </svg>
@@ -22,7 +29,14 @@ const cards: Card[] = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
         <circle cx="12" cy="12" r="3" />
         <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
       </svg>
@@ -32,7 +46,14 @@ const cards: Card[] = [
   },
   {
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
@@ -98,7 +119,8 @@ export default function AboutSection() {
             left: 0,
             right: 0,
             height: "3px",
-            background: "linear-gradient(to right, transparent, #b8864e, transparent)",
+            background:
+              "linear-gradient(to right, transparent, #b8864e, transparent)",
           }}
         />
 
@@ -147,9 +169,10 @@ export default function AboutSection() {
               fontSize: "1rem",
             }}
           >
-            Rooted in the heart of Marikina, the Shoe Capital of the Philippines.
-            We are dedicated to preserving the rich cultural identity of local
-            shoemaking while adapting to modern e-commerce trends.
+            Rooted in the heart of Marikina, the Shoe Capital of the
+            Philippines. We are dedicated to preserving the rich cultural
+            identity of local shoemaking while adapting to modern e-commerce
+            trends.
           </p>
 
           <a
@@ -158,7 +181,7 @@ export default function AboutSection() {
               display: "inline-block",
               backgroundColor: "transparent",
               color: "#f5e6d3",
-              padding: "13px 32px",
+              padding: "13px 22px",
               borderRadius: "4px",
               border: "1px solid rgba(200,168,120,0.7)",
               textDecoration: "none",
@@ -198,14 +221,38 @@ export default function AboutSection() {
             opacity: 0.7,
           }}
         >
-          <span style={{ fontSize: "0.65rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+          <span
+            style={{
+              fontSize: "0.65rem",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+            }}
+          >
             Scroll
           </span>
           <svg width="16" height="24" viewBox="0 0 16 24" fill="none">
-            <rect x="1" y="1" width="14" height="22" rx="7" stroke="#c8a87a" strokeWidth="1.2" />
+            <rect
+              x="1"
+              y="1"
+              width="14"
+              height="22"
+              rx="7"
+              stroke="#c8a87a"
+              strokeWidth="1.2"
+            />
             <circle cx="8" cy="7" r="2" fill="#c8a87a">
-              <animate attributeName="cy" values="7;14;7" dur="1.8s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="1;0;1" dur="1.8s" repeatCount="indefinite" />
+              <animate
+                attributeName="cy"
+                values="7;14;7"
+                dur="1.8s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="1;0;1"
+                dur="1.8s"
+                repeatCount="indefinite"
+              />
             </circle>
           </svg>
         </div>
@@ -216,7 +263,7 @@ export default function AboutSection() {
         id="history"
         style={{
           background: "#f5f0ea",
-          padding: "80px 24px",
+          paddingTop: "40px",
           textAlign: "center",
         }}
       >
@@ -263,16 +310,17 @@ export default function AboutSection() {
             lineHeight: 2,
           }}
         >
-          Founded in 2015 by Fernando Lopez, Pando Shoe Store was born from a lifelong
-          passion for the art of shoemaking. Growing up in Marikina — the undisputed
-          Shoe Capital of the Philippines — Fernando witnessed firsthand the slow decline
-          of the local cobbling trade as mass production began to dominate the market.
-          Determined to keep the tradition alive, he opened Pando&apos;s first workshop on
-          Batangas Street with nothing more than a pair of lasting pliers, decades of
-          inherited skill, and an unwavering belief that handcrafted shoes deserved a
-          place in the modern world. From its humble beginnings as a single-room workshop,
-          Pando has grown into a celebrated local brand — one stitch, one sole, one story
-          at a time.
+          Founded in 2015 by Fernando Lopez, Pando Shoe Store was born from a
+          lifelong passion for the art of shoemaking. Growing up in Marikina —
+          the undisputed Shoe Capital of the Philippines — Fernando witnessed
+          firsthand the slow decline of the local cobbling trade as mass
+          production began to dominate the market. Determined to keep the
+          tradition alive, he opened Pando&apos;s first workshop on Batangas
+          Street with nothing more than a pair of lasting pliers, decades of
+          inherited skill, and an unwavering belief that handcrafted shoes
+          deserved a place in the modern world. From its humble beginnings as a
+          single-room workshop, Pando has grown into a celebrated local brand —
+          one stitch, one sole, one story at a time.
         </p>
       </div>
 
@@ -303,9 +351,7 @@ export default function AboutSection() {
             <h3 style={{ fontSize: "0.95rem", marginBottom: "10px" }}>
               {card.title}
             </h3>
-            <p style={{ fontSize: "0.85rem", lineHeight: 1.7 }}>
-              {card.text}
-            </p>
+            <p style={{ fontSize: "0.85rem", lineHeight: 1.7 }}>{card.text}</p>
           </div>
         ))}
       </div>
@@ -319,7 +365,7 @@ export default function AboutSection() {
           gap: "50px",
           maxWidth: "900px",
           margin: "0 auto",
-          padding: "0 24px",
+          padding: "20px 24px",
         }}
       >
         <div
@@ -342,10 +388,16 @@ export default function AboutSection() {
         </div>
 
         <div style={{ flex: 1, minWidth: "240px" }}>
-          <p style={{ fontSize: "0.75rem", color: "#8a6a4a", marginBottom: "10px" }}>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "#8a6a4a",
+              marginBottom: "20px",
+            }}
+          >
             The Artisans
           </p>
-          <h2 style={{ fontSize: "2rem", marginBottom: "16px" }}>
+          <h2 style={{ fontSize: "2rem", marginBottom: "19px" }}>
             Generations of Craft
           </h2>
           <p style={{ marginBottom: "12px", lineHeight: 1.7 }}>
@@ -353,7 +405,8 @@ export default function AboutSection() {
             have honed their skills over decades.
           </p>
           <p style={{ lineHeight: 1.7 }}>
-            By choosing Pando, you support Marikina craftsmen and preserve tradition.
+            By choosing Pando, you support Marikina craftsmen and preserve
+            tradition.
           </p>
         </div>
       </div>

@@ -114,7 +114,7 @@ export default function ProductPage() {
       {/* ── TITLE + FILTERS ── */}
       <div style={{ textAlign: "center", marginBottom: "48px" }}>
         <h1 style={{
-          fontSize: "2.2rem",
+          fontSize: "3.2rem",
           fontWeight: 700,
           color: "#3C2415",
           marginBottom: "12px",
@@ -125,7 +125,7 @@ export default function ProductPage() {
 
         <p style={{
           color: "#5A3D2B",
-          fontSize: "0.85rem",
+          fontSize: ".85rem",
           maxWidth: "420px",
           margin: "0 auto 28px",
           lineHeight: 1.7,
@@ -142,7 +142,7 @@ export default function ProductPage() {
               onClick={() => setFilter(f)}
               style={{
                 padding: "7px 22px",
-                borderRadius: "999px",
+                borderRadius: "5px",
                 fontSize: "0.8rem",
                 fontWeight: 500,
                 cursor: "pointer",
@@ -209,7 +209,7 @@ export default function ProductPage() {
                 letterSpacing: "1px",
                 textTransform: "uppercase",
                 padding: "4px 10px",
-                borderRadius: "999px",
+                borderRadius: "5px",
                 ...getBadgeStyle(product.badge),
               }}>
                 {product.badge}
@@ -239,7 +239,7 @@ export default function ProductPage() {
                 color: "#fff",
                 border: "none",
                 padding: "10px 20px",
-                borderRadius: "20px",
+                borderRadius: "10px",
                 cursor: "pointer",
                 fontSize: "0.8rem",
                 width: "100%",
