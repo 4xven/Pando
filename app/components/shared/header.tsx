@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../lib/firebase";
+import { LogOut, ShoppingCart } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
-  // Lazy initialize from localStorage
-  const [isLoggedIn, setIsLoggedIn] = useState(() =>
-    localStorage.getItem("pando_logged_in") === "true"
+  const router = useRouter();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => localStorage.getItem("pando_logged_in") === "true",
   );
 
   useEffect(() => {
@@ -15,15 +20,20 @@ export default function Header() {
     };
 
     window.addEventListener("pando_auth_change", handleAuthChange);
-
     return () => {
       window.removeEventListener("pando_auth_change", handleAuthChange);
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut(auth); // Sign out from Firebase
     localStorage.removeItem("pando_logged_in");
+    localStorage.removeItem("pando_role");
+
     window.dispatchEvent(new Event("pando_auth_change"));
+
+    // ✅ Redirect to login page
+    router.push("/login");
   };
 
   return (
@@ -39,16 +49,24 @@ export default function Header() {
           {isLoggedIn && <Link href="/profile">Profile</Link>}
         </nav>
 
-        <div className="login">
+        <div className="flex items-center gap-6">
           {isLoggedIn ? (
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded-sm"
-            >
-              Logout
-            </button>
+            <>
+              <Link href="/cart" className="text-[#e8dfd3] rounded-full">
+                <ShoppingCart size={24} />
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                className="text-[#e8dfd3] rounded-full"
+              >
+                <LogOut size={24} />
+              </button>
+            </>
           ) : (
-            <Link href="/login">Login</Link>
+            <Link href="/login" className="login-btn">
+              <span>Login</span>
+            </Link>
           )}
         </div>
       </div>
