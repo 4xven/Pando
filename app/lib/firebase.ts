@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; 
 
 
 const firebaseConfig = {
@@ -11,7 +12,8 @@ const firebaseConfig = {
   storageBucket: "pando-7cfb2.firebasestorage.app",
   messagingSenderId: "656499618563",
   appId: "1:656499618563:web:75e338962e626d6182af36",
-  measurementId: "G-TDRPWRZBKX"
+  measurementId: "G-TDRPWRZBKX",
+ 
 };
 
 
@@ -20,3 +22,4 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); 
