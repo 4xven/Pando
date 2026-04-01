@@ -2,7 +2,7 @@ import Header from "./components/shared/header";
 import Hero from "./components/hero";
 import CollectionSection from "./components/collectSection";
 import Footer from "./components/shared/footer";
-import AboutSection from "./components/about";
+import CarouselSection from "./components/carouselSection";
 
 export default function Home() {
   return (
@@ -26,7 +26,9 @@ export default function Home() {
         reverse
       />
 
-  
+      
+
+  <CarouselSection /> 
 
       <Footer />
     </main>

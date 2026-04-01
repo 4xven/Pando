@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +10,7 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
-   background: #f3efea;
+  background: #f3efea;
 }
 
 /* HEADER */
@@ -73,7 +77,7 @@ body {
   font-size: 0.95rem;
   border: 1px solid #f5e6d3;
   padding: 8px 18px; /* bigger click area */
-  border-radius: 25px;
+  border-radius: 2px;
   transition: all 0.3s ease;
 }
 
@@ -103,7 +107,7 @@ body {
   padding-top: 130px;
   height: 100%;
   padding-bottom: 80px;
-  background: #E8DFD3;
+  background: #e8dfd3;
   color: #3a2414;
   display: flex;
   align-items: center;
@@ -139,7 +143,7 @@ body {
 
 /* LABELS */
 
-.txt{
+.txt {
   font-size: 1em;
   font-weight: 400px;
 }
@@ -203,8 +207,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 80px;
-  padding: 70px 10%;
+  gap: 100px;
+  padding: 30px;
   background: #f3efea;
 }
 
@@ -217,8 +221,7 @@ body {
 .image-box {
   background: #3a2414;
   padding: 20px;
-  border-radius: 40px;
-  box-shadow: 10px 10px 0px #2a1a0f;
+  border-radius: 15px;
 }
 
 .image-box img {
@@ -238,8 +241,11 @@ body {
 
 .text-box h2 {
   font-size: 2rem;
-  margin-bottom: 15px;
+  margin-bottom: 35px;
   color: #3a2414;
+  font-family:
+    Playfair Display,
+    serif;
 }
 
 .text-box p {
@@ -284,10 +290,11 @@ body {
   color: #fff;
   border: none;
   padding: 10px 20px;
-  border-radius: 20px;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 0.8rem;
   transition: 0.3s;
+  float: right;
 }
 
 .btn:hover {
@@ -452,4 +459,416 @@ body {
   .copyright {
     text-align: center;
   }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.pando-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f0eb;
+  padding: 20px;
+  font-family: "Georgia", serif;
+}
+
+/* ── CARD ── */
+.pando-card {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.2);
+  display: flex;
+  background: #faf8f5;
+  min-height: 620px;
+}
+
+/* ── HERO PANEL ── */
+.pando-hero {
+  position: relative;
+  width: 44%;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pando-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url("/login.jpg");
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.68);
+}
+
+.pando-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, transparent 55%);
+}
+
+.pando-brand {
+  position: absolute;
+  top: 32px;
+  left: 36px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 5px;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.pando-hero-text {
+  position: absolute;
+  bottom: 44px;
+  left: 36px;
+  right: 36px;
+  color: #fff;
+}
+
+.pando-hero-heading {
+  font-size: clamp(22px, 2.4vw, 34px);
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+
+.pando-hero-sub {
+  font-size: clamp(12px, 1.1vw, 15px);
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.65;
+}
+
+/* Mobile hero strip */
+.pando-hero-mobile {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pando-hero-mobile .pando-hero-bg,
+.pando-hero-mobile .pando-hero-gradient {
+  position: absolute;
+  inset: 0;
+}
+
+.pando-hero-mobile .pando-brand {
+  top: 20px;
+  left: 24px;
+  font-size: 14px;
+}
+
+.pando-hero-mobile .pando-hero-text {
+  bottom: 20px;
+  left: 24px;
+  right: 24px;
+}
+
+.pando-hero-mobile .pando-hero-heading {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.pando-hero-mobile .pando-hero-sub {
+  font-size: 12px;
+}
+
+/* ── FORM PANEL ── */
+.pando-form-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(28px, 4vw, 56px) clamp(28px, 4.5vw, 64px);
+  overflow-y: auto;
+}
+
+/* ── TABS ── */
+.pando-tabs {
+  display: flex;
+  align-self: center;
+  border: 1px solid #e5ddd5;
+  border-radius: 999px;
+  padding: 4px;
+  background: #f5f0ea;
+  margin-bottom: 32px;
+  gap: 4px;
+}
+
+.pando-tab {
+  padding: 9px 28px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.pando-tab--active {
+  background: #2a1f14;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.pando-tab--inactive {
+  background: transparent;
+  color: #8a7a6a;
+}
+
+/* ── HEADING ── */
+.pando-heading-block {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.pando-heading {
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 700;
+  color: #1a1008;
+  letter-spacing: -0.4px;
+}
+
+.pando-subheading {
+  font-size: 13px;
+  color: #a09080;
+  margin-top: 6px;
+  letter-spacing: 0.4px;
+}
+
+/* ── FORM ── */
+.pando-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pando-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pando-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pando-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7a6a5a;
+  font-weight: 600;
+}
+
+.pando-forgot {
+  font-size: 10px;
+  color: #a09080;
+  background: none;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  font-family: inherit;
+}
+
+.pando-input-wrap {
+  position: relative;
+}
+
+.pando-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b0a090;
+  pointer-events: none;
+  display: flex;
+}
+
+.pando-input {
+  width: 100%;
+  border: 1.5px solid #ddd5c8;
+  border-radius: 12px;
+  padding: 13px 16px 13px 40px;
+  font-size: 14px;
+  color: #2a1f14;
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.pando-input:focus {
+  border-color: #6a5a4a;
+}
+
+.pando-submit {
+  margin-top: 6px;
+  width: 100%;
+  background: #2a1f14;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.pando-submit:disabled {
+  background: #5a4a3a;
+  cursor: not-allowed;
+}
+
+.pando-submit:not(:disabled):hover {
+  background: #3d2d1e;
+}
+
+/* ── DIVIDER ── */
+.pando-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.pando-divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5ddd5;
+}
+
+.pando-divider-text {
+  font-size: 10px;
+  color: #b0a090;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── SOCIAL ── */
+.pando-social {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+
+.pando-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1px solid #e5ddd5;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+  transition:
+    box-shadow 0.2s,
+    transform 0.15s;
+}
+
+.pando-social-btn:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.13);
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════
+           RESPONSIVE BREAKPOINTS
+        ══════════════════════════════════ */
+
+/* Tablet: tighten hero */
+@media (max-width: 900px) {
+  .pando-card {
+    min-height: unset;
+  }
+  .pando-hero {
+    width: 38%;
+  }
+}
+
+/* Mobile: stack vertically */
+@media (max-width: 640px) {
+  .pando-page {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .pando-card {
+    flex-direction: column;
+    border-radius: 0;
+    min-height: 100dvh;
+    box-shadow: none;
+  }
+
+  .pando-hero {
+    display: none;
+  }
+  .pando-hero-mobile {
+    display: block;
+  }
+
+  .pando-form-panel {
+    padding: 28px 24px 40px;
+    flex: 1;
+  }
+
+  .pando-tabs {
+    margin-bottom: 24px;
+  }
+  .pando-heading-block {
+    margin-bottom: 20px;
+  }
+  .pando-form {
+    gap: 16px;
+  }
+  .pando-divider {
+    margin: 18px 0;
+  }
+}
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  color: #e8dfd3;
+  border: 1px solid #e8dfd3;
+  border-radius: 0.375rem; /* same as rounded-md */
+
+  padding: 0.3rem 1.3rem; /* py-3 px-6 */
+
+  transition: all 0.2s ease;
+}
+
+.login-btn:hover {
+  background-color: #e8dfd3;
+  color: black;
 }
