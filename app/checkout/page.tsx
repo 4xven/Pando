@@ -7,6 +7,7 @@ import Header from "../components/shared/header";
 import Footer from "../components/shared/footer";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Product {
@@ -36,97 +37,31 @@ interface ShippingForm {
   postal: string;
 }
 
-const getCartKey = () => {
-  const user = auth.currentUser;
-  return user ? `pando_cart_${user.uid}` : "pando_cart_guest";
-};
-
 const SHIPPING_FEE = 250;
 
-// ── Component ─────────────────────────────────────────────────────────────────
-export default function CheckoutPage() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [placing, setPlacing] = useState(false);
-  const [form, setForm] = useState<ShippingForm>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    street: "",
-    city: "Marikina City",
-    province: "Metro Manila",
-    postal: "1800",
-  });
-  const [errors, setErrors] = useState<Partial<ShippingForm>>({});
+// ── Field component (outside CheckoutPage to avoid react-hooks/static-components) ──
+interface FieldProps {
+  label: string;
+  field: keyof ShippingForm;
+  placeholder?: string;
+  half?: boolean;
+  type?: string;
+  value: string;
+  error?: string;
+  onChange: (field: keyof ShippingForm, value: string) => void;
+}
 
-  // Load cart from localStorage (same key logic as CartPage)
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      const key = user ? `pando_cart_${user.uid}` : "pando_cart_guest";
-      try {
-        const saved = localStorage.getItem(key);
-        setCart(saved ? JSON.parse(saved) : []);
-      } catch {
-        setCart([]);
-      }
-    });
-    return () => unsub();
-  }, []);
-
-  // ── Formatting ───────────────────────────────────────────────────────────
-  const formatPrice = (n: number) =>
-    "₱" + new Intl.NumberFormat("en-PH").format(n);
-
-  const subtotal = cart.reduce(
-    (sum, i) => sum + i.product.price * i.quantity,
-    0
-  );
-  const total = subtotal + SHIPPING_FEE;
-
-  // ── Validation ───────────────────────────────────────────────────────────
-  const validate = () => {
-    const e: Partial<ShippingForm> = {};
-    if (!form.firstName.trim()) e.firstName = "Required";
-    if (!form.lastName.trim()) e.lastName = "Required";
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
-      e.email = "Valid email required";
-    if (!form.phone.trim()) e.phone = "Required";
-    if (!form.street.trim()) e.street = "Required";
-    if (!form.city.trim()) e.city = "Required";
-    if (!form.province.trim()) e.province = "Required";
-    if (!form.postal.trim()) e.postal = "Required";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleChange = (field: keyof ShippingForm, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!validate()) return;
-    setPlacing(true);
-    // TODO: integrate with Firestore / PayMongo / etc.
-    await new Promise((r) => setTimeout(r, 1500));
-    alert("Order placed! (integration coming soon)");
-    setPlacing(false);
-  };
-
-  // ── Input component ──────────────────────────────────────────────────────
-  const Field = ({
-    label,
-    field,
-    placeholder,
-    half,
-    type = "text",
-  }: {
-    label: string;
-    field: keyof ShippingForm;
-    placeholder?: string;
-    half?: boolean;
-    type?: string;
-  }) => (
+function Field({
+  label,
+  field,
+  placeholder,
+  half,
+  type = "text",
+  value,
+  error,
+  onChange,
+}: FieldProps) {
+  return (
     <div style={{ flex: half ? "1 1 calc(50% - 8px)" : "1 1 100%" }}>
       <label
         style={{
@@ -143,13 +78,13 @@ export default function CheckoutPage() {
       </label>
       <input
         type={type}
-        value={form[field]}
+        value={value}
         placeholder={placeholder}
-        onChange={(e) => handleChange(field, e.target.value)}
+        onChange={(e) => onChange(field, e.target.value)}
         style={{
           width: "100%",
           padding: "12px 14px",
-          border: `1.5px solid ${errors[field] ? "#f87171" : "#e0d8d0"}`,
+          border: `1.5px solid ${error ? "#f87171" : "#e0d8d0"}`,
           borderRadius: "10px",
           fontSize: "0.88rem",
           color: "#3C2415",
@@ -157,19 +92,16 @@ export default function CheckoutPage() {
           outline: "none",
           fontFamily: "Arial, Helvetica, sans-serif",
           transition: "border-color 0.2s",
+          boxSizing: "border-box",
         }}
         onFocus={(e) =>
-          (e.currentTarget.style.borderColor = errors[field]
-            ? "#f87171"
-            : "#8a6a50")
+          (e.currentTarget.style.borderColor = error ? "#f87171" : "#8a6a50")
         }
         onBlur={(e) =>
-          (e.currentTarget.style.borderColor = errors[field]
-            ? "#f87171"
-            : "#e0d8d0")
+          (e.currentTarget.style.borderColor = error ? "#f87171" : "#e0d8d0")
         }
       />
-      {errors[field] && (
+      {error && (
         <p
           style={{
             fontSize: "0.72rem",
@@ -178,14 +110,32 @@ export default function CheckoutPage() {
             marginBottom: 0,
           }}
         >
-          {errors[field]}
+          {error}
         </p>
       )}
     </div>
   );
+}
 
-  // ── Order Summary Card ───────────────────────────────────────────────────
-  const OrderSummary = () => (
+// ── OrderSummary component (outside CheckoutPage) ─────────────────────────────
+interface OrderSummaryProps {
+  cart: CartItem[];
+  subtotal: number;
+  total: number;
+  placing: boolean;
+  onPlaceOrder: () => void;
+  formatPrice: (n: number) => string;
+}
+
+function OrderSummary({
+  cart,
+  subtotal,
+  total,
+  placing,
+  onPlaceOrder,
+  formatPrice,
+}: OrderSummaryProps) {
+  return (
     <div
       style={{
         background: "#3A2414",
@@ -223,7 +173,6 @@ export default function CheckoutPage() {
               key={`${item.product.id}-${item.size}`}
               style={{ display: "flex", alignItems: "center", gap: "12px" }}
             >
-              {/* Thumbnail */}
               <div
                 style={{
                   width: "52px",
@@ -242,14 +191,16 @@ export default function CheckoutPage() {
                   <img
                     src={item.product.image}
                     alt={item.product.name}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
                 ) : (
                   <span style={{ fontSize: "1.4rem" }}>👟</span>
                 )}
               </div>
-
-              {/* Name / size */}
               <div style={{ flex: 1 }}>
                 <p
                   style={{
@@ -271,8 +222,6 @@ export default function CheckoutPage() {
                   EU {item.size} · qty {item.quantity}
                 </p>
               </div>
-
-              {/* Price */}
               <span
                 style={{
                   fontSize: "0.9rem",
@@ -288,7 +237,6 @@ export default function CheckoutPage() {
         )}
       </div>
 
-      {/* Divider */}
       <div
         style={{
           borderTop: "1px solid rgba(245,230,211,0.15)",
@@ -296,19 +244,36 @@ export default function CheckoutPage() {
         }}
       />
 
-      {/* Subtotal / Shipping */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          marginBottom: "16px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "0.85rem",
+          }}
+        >
           <span style={{ color: "rgba(245,230,211,0.65)" }}>Subtotal</span>
           <span style={{ color: "#f5e6d3" }}>{formatPrice(subtotal)}</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "0.85rem",
+          }}
+        >
           <span style={{ color: "rgba(245,230,211,0.65)" }}>Shipping</span>
           <span style={{ color: "#f5e6d3" }}>{formatPrice(SHIPPING_FEE)}</span>
         </div>
       </div>
 
-      {/* Divider */}
       <div
         style={{
           borderTop: "1px solid rgba(245,230,211,0.15)",
@@ -316,7 +281,6 @@ export default function CheckoutPage() {
         }}
       />
 
-      {/* Total */}
       <div
         style={{
           display: "flex",
@@ -340,9 +304,8 @@ export default function CheckoutPage() {
         </span>
       </div>
 
-      {/* CTA */}
       <button
-        onClick={handlePlaceOrder}
+        onClick={onPlaceOrder}
         disabled={placing || cart.length === 0}
         style={{
           width: "100%",
@@ -389,8 +352,98 @@ export default function CheckoutPage() {
       </p>
     </div>
   );
+}
 
-  // ── Main Render ──────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
+export default function CheckoutPage() {
+  const router = useRouter();
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [placing, setPlacing] = useState(false);
+  const [form, setForm] = useState<ShippingForm>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    street: "",
+    city: "",
+    province: "",
+    postal: "",
+  });
+  const [errors, setErrors] = useState<Partial<ShippingForm>>({});
+
+  // Load checkout cart (may be a subset if user selected items on cart page)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      const cartKey = user ? `pando_cart_${user.uid}` : "pando_cart_guest";
+      const checkoutKey = user
+        ? `pando_checkout_${user.uid}`
+        : "pando_checkout_guest";
+
+      try {
+        // Prefer checkout-specific items (set by cart page when items are selected)
+        const checkoutItems = localStorage.getItem(checkoutKey);
+        if (checkoutItems) {
+          setCart(JSON.parse(checkoutItems));
+        } else {
+          // Fallback: use full cart
+          const saved = localStorage.getItem(cartKey);
+          setCart(saved ? JSON.parse(saved) : []);
+        }
+      } catch {
+        setCart([]);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Pre-fill email from Firebase auth
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user?.email) {
+        setForm((prev) => ({ ...prev, email: user.email ?? "" }));
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const formatPrice = (n: number) =>
+    "₱" + new Intl.NumberFormat("en-PH").format(n);
+
+  const subtotal = cart.reduce(
+    (sum, i) => sum + i.product.price * i.quantity,
+    0,
+  );
+  const total = subtotal + SHIPPING_FEE;
+
+  const validate = () => {
+    const e: Partial<ShippingForm> = {};
+    if (!form.firstName.trim()) e.firstName = "Required";
+    if (!form.lastName.trim()) e.lastName = "Required";
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
+      e.email = "Valid email required";
+    if (!form.phone.trim()) e.phone = "Required";
+    if (!form.street.trim()) e.street = "Required";
+    if (!form.city.trim()) e.city = "Required";
+    if (!form.province.trim()) e.province = "Required";
+    if (!form.postal.trim()) e.postal = "Required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleChange = (field: keyof ShippingForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!validate()) return;
+    setPlacing(true);
+    // TODO: integrate with Firestore / PayMongo / etc.
+    await new Promise((r) => setTimeout(r, 1500));
+    alert("Order placed! (integration coming soon)");
+    setPlacing(false);
+  };
+
   return (
     <main>
       <Header />
@@ -404,7 +457,6 @@ export default function CheckoutPage() {
         }}
       >
         <div style={{ maxWidth: "1060px", margin: "0 auto" }}>
-
           {/* Back link + Title */}
           <div style={{ marginBottom: "32px" }}>
             <Link
@@ -450,10 +502,11 @@ export default function CheckoutPage() {
               alignItems: "start",
             }}
           >
-            {/* ── LEFT COLUMN ── */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-              {/* Shipping Information Card */}
+            {/* LEFT COLUMN */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+            >
+              {/* Shipping Information */}
               <div
                 style={{
                   background: "#fdf9f5",
@@ -477,25 +530,81 @@ export default function CheckoutPage() {
                   Shipping Information
                 </h2>
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "16px",
-                  }}
-                >
-                  <Field label="First Name" field="firstName" placeholder="Juan" half />
-                  <Field label="Last Name" field="lastName" placeholder="Dela Cruz" half />
-                  <Field label="Email Address" field="email" placeholder="juan@example.com" type="email" />
-                  <Field label="Phone Number" field="phone" placeholder="+63 900 000 0000" />
-                  <Field label="Street Address" field="street" placeholder="House No., Street Name, Barangay" />
-                  <Field label="City" field="city" placeholder="Marikina City" half />
-                  <Field label="Province" field="province" placeholder="Metro Manila" half />
-                  <Field label="Postal Code" field="postal" placeholder="1800" half />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+                  <Field
+                    label="First Name"
+                    field="firstName"
+                    placeholder="First Name"
+                    half
+                    value={form.firstName}
+                    error={errors.firstName}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Last Name"
+                    field="lastName"
+                    placeholder="Last Name"
+                    half
+                    value={form.lastName}
+                    error={errors.lastName}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Email Address"
+                    field="email"
+                    placeholder="Email Account"
+                    type="email"
+                    value={form.email}
+                    error={errors.email}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Phone Number"
+                    field="phone"
+                    placeholder="+63 900 000 0000"
+                    value={form.phone}
+                    error={errors.phone}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Street Address"
+                    field="street"
+                    placeholder="House No., Street Name, Barangay"
+                    value={form.street}
+                    error={errors.street}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="City"
+                    field="city"
+                    placeholder="City"
+                    half
+                    value={form.city}
+                    error={errors.city}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Province"
+                    field="province"
+                    placeholder="Province"
+                    half
+                    value={form.province}
+                    error={errors.province}
+                    onChange={handleChange}
+                  />
+                  <Field
+                    label="Postal Code"
+                    field="postal"
+                    placeholder="####"
+                    half
+                    value={form.postal}
+                    error={errors.postal}
+                    onChange={handleChange}
+                  />
                 </div>
               </div>
 
-              {/* Payment Method Card */}
+              {/* Payment Method */}
               <div
                 style={{
                   background: "#fdf9f5",
@@ -519,7 +628,6 @@ export default function CheckoutPage() {
                   Payment Method
                 </h2>
 
-                {/* COD option — pre-selected */}
                 <div
                   style={{
                     border: "2px solid #A0522D",
@@ -531,7 +639,6 @@ export default function CheckoutPage() {
                     background: "rgba(160,82,45,0.05)",
                   }}
                 >
-                  {/* COD icon */}
                   <div
                     style={{
                       width: "44px",
@@ -576,7 +683,6 @@ export default function CheckoutPage() {
                     </p>
                   </div>
 
-                  {/* Radio indicator */}
                   <div
                     style={{
                       width: "20px",
@@ -602,7 +708,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* More payment methods placeholder */}
                 <p
                   style={{
                     fontSize: "0.75rem",
@@ -616,14 +721,20 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* ── RIGHT COLUMN — sticky order summary ── */}
+            {/* RIGHT COLUMN — sticky order summary */}
             <div style={{ position: "sticky", top: "100px" }}>
-              <OrderSummary />
+              <OrderSummary
+                cart={cart}
+                subtotal={subtotal}
+                total={total}
+                placing={placing}
+                onPlaceOrder={handlePlaceOrder}
+                formatPrice={formatPrice}
+              />
             </div>
           </div>
         </div>
 
-        {/* Responsive override */}
         <style>{`
           @media (max-width: 820px) {
             div[style*="grid-template-columns: 1fr 360px"] {

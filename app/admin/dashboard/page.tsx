@@ -40,7 +40,10 @@ const ORDERS: Order[] = [
 
 const REVENUE = [42000, 50000, 48000, 60000, 58000, 72000];
 
-const STATUS_STYLE: any = {
+const STATUS_STYLE: Record<
+  Order["status"],
+  { bg: string; color: string }
+> = {
   Pending: { bg: "#fef3c7", color: "#92400e" },
   Processing: { bg: "#dbeafe", color: "#1e40af" },
   Shipped: { bg: "#ede9fe", color: "#5b21b6" },
@@ -118,7 +121,7 @@ export default function DashboardPage() {
         Dashboard Overview
       </h1>
       <p style={{ color: "#777", marginBottom: "25px" }}>
-        Welcome back! Here's what's happening with your store.
+        Welcome back! Heres whats happening with your store.
       </p>
 
       {/* ── STAT CARDS ── */}

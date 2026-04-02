@@ -37,7 +37,7 @@ const MOCK_ORDERS = [
   },
 ];
 
-const TABS = ["Overview", "Orders", "Addresses", "Settings"] as const;
+const TABS = ["Overview", "Orders", "Settings"] as const;
 type Tab = (typeof TABS)[number];
 
 const BADGE_CLASS: Record<string, string> = {
@@ -110,10 +110,7 @@ export default function ProfilePage() {
             </div>
             <div className="profile-stat-label">Orders</div>
           </div>
-          <div className="profile-stat">
-            <div className="profile-stat-value">2</div>
-            <div className="profile-stat-label">Addresses</div>
-          </div>
+         
           <div className="profile-stat">
             <div className="profile-stat-value">
               ₱{(
@@ -208,7 +205,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="profile-info-label">Phone</p>
-                    <p className="profile-info-value">+63 917 000 0000</p>
+                    <p className="profile-info-value">-------------</p>
                   </div>
                   <div>
                     <p className="profile-info-label">Member Since</p>
@@ -216,7 +213,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="profile-info-label">Shoe Size</p>
-                    <p className="profile-info-value">EU 43</p>
+                    <p className="profile-info-value">------------</p>
                   </div>
                   <div>
                     <p className="profile-info-label">Account Status</p>
@@ -297,57 +294,7 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
-
-        {/* ════════════ ADDRESSES ════════════ */}
-        {activeTab === "Addresses" && (
-          <div className="profile-grid profile-grid--3">
-            {/* Address 1 */}
-            <div className="profile-card">
-              <div className="profile-address-card">
-                <span className="profile-address-tag">Home</span>
-                <p className="profile-address-name">{emailName}</p>
-                <p className="profile-address-line">
-                  123 Mahogany St., Brgy. San Antonio
-                  <br />
-                  Quezon City, Metro Manila 1100
-                </p>
-                <p className="profile-address-phone">+63 917 000 0000</p>
-              </div>
-              <div className="divider" />
-              <button className="btn profile-btn-sm">
-                <Edit2 size={11} style={{ display: "inline", marginRight: 6 }} />
-                Edit
-              </button>
-            </div>
-
-            {/* Address 2 */}
-            <div className="profile-card">
-              <div className="profile-address-card">
-                <span className="profile-address-tag">Office</span>
-                <p className="profile-address-name">{emailName}</p>
-                <p className="profile-address-line">
-                  8F One Corporate Centre
-                  <br />
-                  Doña Julia Vargas Ave., Ortigas 1605
-                </p>
-                <p className="profile-address-phone">+63 917 000 0000</p>
-              </div>
-              <div className="divider" />
-              <button className="btn profile-btn-sm">
-                <Edit2 size={11} style={{ display: "inline", marginRight: 6 }} />
-                Edit
-              </button>
-            </div>
-
-            {/* Add new */}
-            <button className="profile-card profile-address-add">
-              <span className="profile-address-add-icon">
-                <Plus size={32} color="#b9a88f" />
-              </span>
-              <span className="profile-address-add-text">Add New Address</span>
-            </button>
-          </div>
-        )}
+        
 
         {/* ════════════ SETTINGS ════════════ */}
         {activeTab === "Settings" && (

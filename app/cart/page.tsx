@@ -1,14 +1,12 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trash2, ArrowLeft } from "lucide-react";
 import Header from "../components/shared/header";
 import Footer from "../components/shared/footer";
-
 import { db, auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-
 import { collection, onSnapshot } from "firebase/firestore";
 
 interface Product {
@@ -28,72 +26,63 @@ interface CartItem {
   size: number;
   quantity: number;
 }
-  const getCartKey = () => {
-  const user = auth.currentUser;
-  return user ? `pando_cart_${user.uid}` : "pando_cart_guest";
-};
+
+// Returns the correct localStorage key for the current user
+const getCartKey = (uid?: string) =>
+  uid ? `pando_cart_${uid}` : "pando_cart_guest";
+
+const getCheckoutKey = (uid?: string) =>
+  uid ? `pando_checkout_${uid}` : "pando_checkout_guest";
+
 export default function CartPage() {
-  // ─── Lazy-initialize cart from localStorage ───────────────────────────────
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem(getCartKey());
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const router = useRouter();
 
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [currentUid, setCurrentUid] = useState<string | undefined>(undefined);
 
-useEffect(() => {
-  let unsubProducts: (() => void) | null = null;
+  useEffect(() => {
+    let unsubProducts: (() => void) | null = null;
 
-  const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-    const key = user ? `pando_cart_${user.uid}` : "pando_cart_guest";
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      const uid = user?.uid;
+      setCurrentUid(uid);
+      const key = getCartKey(uid);
 
-    // Load saved cart from localStorage
-    const saved = localStorage.getItem(key);
-    setCart(saved ? JSON.parse(saved) : []);
+      // Load saved cart from localStorage
+      const saved = localStorage.getItem(key);
+      setCart(saved ? JSON.parse(saved) : []);
 
-    // Start listening to product changes
-    if (unsubProducts) unsubProducts(); // cleanup previous listener if any
-    unsubProducts = onSnapshot(collection(db, "products"), (snapshot) => {
-      const productsMap = new Map(
-        snapshot.docs.map((doc) => [doc.id, doc.data()])
-      );
-
-      setCart((prev) =>
-        prev.map((item) => {
-          const latest = productsMap.get(item.product.id);
-          if (!latest) return item;
-
-          return {
-            ...item,
-            product: {
-              ...item.product,
-              stock: latest.stock, // update stock dynamically
-            },
-          };
-        })
-      );
+      // Start listening to product changes for live stock updates
+      if (unsubProducts) unsubProducts();
+      unsubProducts = onSnapshot(collection(db, "products"), (snapshot) => {
+        const productsMap = new Map(
+          snapshot.docs.map((doc) => [doc.id, doc.data()])
+        );
+        setCart((prev) =>
+          prev.map((item) => {
+            const latest = productsMap.get(item.product.id);
+            if (!latest) return item;
+            return { ...item, product: { ...item.product, stock: latest.stock } };
+          })
+        );
+      });
     });
-  });
 
-  return () => {
-    unsubscribeAuth();
-    if (unsubProducts) unsubProducts();
-  };
-}, []);
-  // ─── Track which items are checked ("productId-size") ────────────────────
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cartUpdated, setCartUpdated] = useState(false);
+    return () => {
+      unsubscribeAuth();
+      if (unsubProducts) unsubProducts();
+    };
+  }, []);
 
   // ─── Sync cart to localStorage on every change ───────────────────────────
   useEffect(() => {
-    localStorage.setItem(getCartKey(), JSON.stringify(cart));
-  }, [cart]);
+    localStorage.setItem(getCartKey(currentUid), JSON.stringify(cart));
+  }, [cart, currentUid]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // ─── Selection state ──────────────────────────────────────────────────────
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [cartUpdated, setCartUpdated] = useState(false);
+
   const itemKey = (productId: string, size: number) => `${productId}-${size}`;
 
   const formatPrice = (price: number) =>
@@ -104,11 +93,8 @@ useEffect(() => {
     setTimeout(() => setCartUpdated(false), 1500);
   };
 
-  // Total items in cart (all, for any badge in Header)
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  // If nothing selected → show totals for all items
-  // If something selected → show totals only for selected items
   const selectedItems = cart.filter((i) =>
     selected.has(itemKey(i.product.id, i.size))
   );
@@ -119,18 +105,12 @@ useEffect(() => {
     0
   );
 
-  // ─── Select All helpers ───────────────────────────────────────────────────
   const allKeys = cart.map((i) => itemKey(i.product.id, i.size));
-  const allSelected =
-    allKeys.length > 0 && allKeys.every((k) => selected.has(k));
+  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
   const someSelected = selected.size > 0;
 
   const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelected(new Set()); // deselect all
-    } else {
-      setSelected(new Set(allKeys)); // select all
-    }
+    setSelected(allSelected ? new Set() : new Set(allKeys));
   };
 
   const toggleSelect = (productId: string, size: number) => {
@@ -147,7 +127,6 @@ useEffect(() => {
     setCart((prev) =>
       prev.filter((i) => !(i.product.id === productId && i.size === size))
     );
-    // also deselect the removed item
     setSelected((prev) => {
       const next = new Set(prev);
       next.delete(itemKey(productId, size));
@@ -166,41 +145,39 @@ useEffect(() => {
     flash();
   };
 
-const updateQuantity = (
-  productId: string,
-  size: number,
-  newQuantity: number
-) => {
-  setCart((prev) =>
-    prev.map((i) => {
-      if (i.product.id === productId && i.size === size) {
-        const maxStock = i.product.stock;
-
-        if (newQuantity > maxStock) {
-          alert(`Only ${maxStock} item(s) available in stock`);
-          return { ...i, quantity: maxStock };
+  const updateQuantity = (productId: string, size: number, newQuantity: number) => {
+    setCart((prev) =>
+      prev.map((i) => {
+        if (i.product.id === productId && i.size === size) {
+          const maxStock = i.product.stock;
+          if (newQuantity > maxStock) {
+            alert(`Only ${maxStock} item(s) available in stock`);
+            return { ...i, quantity: maxStock };
+          }
+          if (newQuantity < 1) return i;
+          return { ...i, quantity: newQuantity };
         }
+        return i;
+      })
+    );
+  };
 
-        if (newQuantity < 1) return i;
-
-        return { ...i, quantity: newQuantity };
-      }
-      return i;
-    })
-  );
-};
-
+  // ─── Checkout navigation ──────────────────────────────────────────────────
   const handleCheckout = () => {
-    // TODO: Integrate with payment processor (Stripe, PayMongo, etc.)
-    alert("Checkout feature coming soon!");
+    // If specific items are selected, save only those for checkout.
+    // Otherwise pass the full cart.
+    const itemsForCheckout = someSelected ? selectedItems : cart;
+    localStorage.setItem(
+      getCheckoutKey(currentUid),
+      JSON.stringify(itemsForCheckout)
+    );
+    router.push("/checkout");
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <main>
-      {/* Reusable Header — fixed at the top */}
       <Header />
-
       <div
         style={{
           minHeight: "100vh",
@@ -210,8 +187,7 @@ const updateQuantity = (
         }}
       >
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
-
-          {/* ── Page heading ── */}
+          {/* Page heading */}
           <div style={{ marginBottom: "40px" }}>
             <Link
               href="/product"
@@ -232,7 +208,6 @@ const updateQuantity = (
               <ArrowLeft size={18} />
               Continue Shopping
             </Link>
-
             <h1
               style={{
                 fontSize: "2.8rem",
@@ -253,7 +228,7 @@ const updateQuantity = (
             </p>
           </div>
 
-          {/* ── Flash message ── */}
+          {/* Flash message */}
           {cartUpdated && (
             <div
               style={{
@@ -271,7 +246,7 @@ const updateQuantity = (
             </div>
           )}
 
-          {/* ── Empty state ── */}
+          {/* Empty state */}
           {cart.length === 0 ? (
             <div
               style={{
@@ -294,16 +269,8 @@ const updateQuantity = (
               >
                 Your cart is empty
               </h2>
-              <p
-                style={{
-                  color: "#9A8070",
-                  fontSize: "0.9rem",
-                  maxWidth: "400px",
-                  margin: "0 auto 28px",
-                }}
-              >
-                Discover our collection of premium Marikina shoes and add your
-                favorites to the cart.
+              <p style={{ color: "#9A8070", fontSize: "0.9rem", maxWidth: "400px", margin: "0 auto 28px" }}>
+                Discover our collection of premium Marikina shoes and add your favorites to the cart.
               </p>
               <Link
                 href="/product"
@@ -318,27 +285,15 @@ const updateQuantity = (
                   fontSize: "0.9rem",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#5a3a21")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#3C2415")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#5a3a21")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#3C2415")}
               >
                 Shop Now
               </Link>
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 340px",
-                gap: "24px",
-              }}
-            >
-              {/* ────────────────────────────────────────────────────────────
-                  LEFT — cart items
-              ──────────────────────────────────────────────────────────── */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px" }}>
+              {/* LEFT — cart items */}
               <div
                 style={{
                   background: "#fdf9f5",
@@ -347,7 +302,7 @@ const updateQuantity = (
                   boxShadow: "0 2px 10px rgba(60,36,21,0.08)",
                 }}
               >
-                {/* ── Bulk action toolbar ── */}
+                {/* Bulk action toolbar */}
                 <div
                   style={{
                     display: "flex",
@@ -359,7 +314,6 @@ const updateQuantity = (
                     flexWrap: "wrap",
                   }}
                 >
-                  {/* Select All checkbox */}
                   <label
                     style={{
                       display: "flex",
@@ -376,23 +330,15 @@ const updateQuantity = (
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      style={{
-                        width: "17px",
-                        height: "17px",
-                        cursor: "pointer",
-                        accentColor: "#3C2415",
-                      }}
+                      style={{ width: "17px", height: "17px", cursor: "pointer", accentColor: "#3C2415" }}
                     />
                     Select All
                   </label>
-
                   {someSelected && (
                     <span style={{ fontSize: "0.82rem", color: "#9A8070" }}>
                       {selected.size} selected
                     </span>
                   )}
-
-                  {/* Delete Selected — only visible when at least one is checked */}
                   {someSelected && (
                     <button
                       onClick={removeSelected}
@@ -411,12 +357,8 @@ const updateQuantity = (
                         gap: "6px",
                         transition: "background 0.2s",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#fef2f2")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "none")
-                      }
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                     >
                       <Trash2 size={14} />
                       Delete Selected
@@ -424,11 +366,10 @@ const updateQuantity = (
                   )}
                 </div>
 
-                {/* ── Cart item rows ── */}
+                {/* Cart item rows */}
                 {cart.map((item, idx) => {
                   const key = itemKey(item.product.id, item.size);
                   const isSelected = selected.has(key);
-
                   return (
                     <div
                       key={key}
@@ -437,41 +378,23 @@ const updateQuantity = (
                         gap: "16px",
                         padding: "12px",
                         marginBottom: idx < cart.length - 1 ? "8px" : "0",
-                        borderBottom:
-                          idx < cart.length - 1 ? "1px solid #ede6df" : "none",
+                        borderBottom: idx < cart.length - 1 ? "1px solid #ede6df" : "none",
                         borderRadius: "12px",
-                        // Highlight row when selected
-                        background: isSelected
-                          ? "rgba(160,82,45,0.06)"
-                          : "transparent",
+                        background: isSelected ? "rgba(160,82,45,0.06)" : "transparent",
                         transition: "background 0.2s",
                       }}
                     >
-                      {/* Individual checkbox */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          paddingTop: "4px",
-                        }}
-                      >
+                      {/* Checkbox */}
+                      <div style={{ display: "flex", alignItems: "flex-start", paddingTop: "4px" }}>
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() =>
-                            toggleSelect(item.product.id, item.size)
-                          }
-                          style={{
-                            width: "16px",
-                            height: "16px",
-                            cursor: "pointer",
-                            accentColor: "#3C2415",
-                            marginTop: "2px",
-                          }}
+                          onChange={() => toggleSelect(item.product.id, item.size)}
+                          style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#3C2415", marginTop: "2px" }}
                         />
                       </div>
 
-                      {/* Product image */}
+                      {/* Image */}
                       <div
                         style={{
                           width: "100px",
@@ -490,72 +413,30 @@ const updateQuantity = (
                           <img
                             src={item.product.image}
                             alt={item.product.name}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         ) : (
-                          <span style={{ fontSize: "2rem", opacity: 0.3 }}>
-                            👟
-                          </span>
+                          <span style={{ fontSize: "2rem", opacity: 0.3 }}>👟</span>
                         )}
                       </div>
 
-                      {/* Product details */}
+                      {/* Details */}
                       <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            marginBottom: "8px",
-                          }}
-                        >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                           <div>
-                            <h3
-                              style={{
-                                margin: "0 0 4px 0",
-                                fontSize: "1rem",
-                                fontWeight: 700,
-                                color: "#3C2415",
-                              }}
-                            >
+                            <h3 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 700, color: "#3C2415" }}>
                               {item.product.name}
                             </h3>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "0.8rem",
-                                color: "#9A8070",
-                              }}
-                            >
+                            <p style={{ margin: 0, fontSize: "0.8rem", color: "#9A8070" }}>
                               EU {item.size} · {item.product.category}
                             </p>
                           </div>
-                          <span
-                            style={{
-                              fontSize: "1.1rem",
-                              fontWeight: 700,
-                              color: "#A0522D",
-                              whiteSpace: "nowrap",
-                              marginLeft: "12px",
-                            }}
-                          >
+                          <span style={{ fontSize: "1.1rem", fontWeight: 700, color: "#A0522D", whiteSpace: "nowrap", marginLeft: "12px" }}>
                             {formatPrice(item.product.price * item.quantity)}
                           </span>
                         </div>
 
-                        {/* Quantity + remove */}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "12px",
-                            marginTop: "12px",
-                          }}
-                        >
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "12px" }}>
                           <div
                             style={{
                               display: "flex",
@@ -567,83 +448,37 @@ const updateQuantity = (
                             }}
                           >
                             <button
-                              onClick={() =>
-                                updateQuantity(
-                                  item.product.id,
-                                  item.size,
-                                  item.quantity - 1
-                                )
-                              }
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#9A8070",
-                                cursor: "pointer",
-                                fontSize: "1rem",
-                                padding: "4px 8px",
-                                transition: "color 0.2s",
-                              }}
-                              onMouseEnter={(e) =>
-                                (e.currentTarget.style.color = "#3C2415")
-                              }
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.color = "#9A8070")
-                              }
+                              onClick={() => updateQuantity(item.product.id, item.size, item.quantity - 1)}
+                              style={{ background: "none", border: "none", color: "#9A8070", cursor: "pointer", fontSize: "1rem", padding: "4px 8px", transition: "color 0.2s" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#3C2415")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "#9A8070")}
                             >
                               −
                             </button>
-                            <span
-                              style={{
-                                fontSize: "0.9rem",
-                                fontWeight: 600,
-                                color: "#3C2415",
-                                minWidth: "24px",
-                                textAlign: "center",
-                              }}
-                            >
+                            <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#3C2415", minWidth: "24px", textAlign: "center" }}>
                               {item.quantity}
                             </span>
                             <button
-  onClick={() =>
-    updateQuantity(
-      item.product.id,
-      item.size,
-      item.quantity + 1
-    )
-  }
-  disabled={item.quantity >= item.product.stock}
-  style={{
-    background: "none",
-    border: "none",
-    color: item.quantity >= item.product.stock ? "#ccc" : "#9A8070",
-    cursor: item.quantity >= item.product.stock ? "not-allowed" : "pointer",
-    fontSize: "1rem",
-    padding: "4px 8px",
-  }}
->
-  +
-</button>
+                              onClick={() => updateQuantity(item.product.id, item.size, item.quantity + 1)}
+                              disabled={item.quantity >= item.product.stock}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: item.quantity >= item.product.stock ? "#ccc" : "#9A8070",
+                                cursor: item.quantity >= item.product.stock ? "not-allowed" : "pointer",
+                                fontSize: "1rem",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              +
+                            </button>
                           </div>
 
                           <button
-                            onClick={() =>
-                              removeFromCart(item.product.id, item.size)
-                            }
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "#c4b9af",
-                              cursor: "pointer",
-                              padding: "4px 8px",
-                              transition: "color 0.2s",
-                              marginLeft: "auto",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.color = "#b91c1c")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.color = "#c4b9af")
-                            }
+                            onClick={() => removeFromCart(item.product.id, item.size)}
+                            style={{ background: "none", border: "none", color: "#c4b9af", cursor: "pointer", padding: "4px 8px", transition: "color 0.2s", marginLeft: "auto" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = "#b91c1c")}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = "#c4b9af")}
                             title="Remove from cart"
                           >
                             <Trash2 size={18} />
@@ -653,13 +488,9 @@ const updateQuantity = (
                     </div>
                   );
                 })}
-
-                
               </div>
 
-              {/* ────────────────────────────────────────────────────────────
-                  RIGHT — Order Summary
-              ──────────────────────────────────────────────────────────── */}
+              {/* RIGHT — Order Summary */}
               <div>
                 <div
                   style={{
@@ -668,78 +499,28 @@ const updateQuantity = (
                     padding: "24px",
                     boxShadow: "0 2px 10px rgba(60,36,21,0.08)",
                     position: "sticky",
-                    top: "100px", // clears the fixed header
+                    top: "100px",
                   }}
                 >
-                  <h3
-                    style={{
-                      margin: "0 0 4px 0",
-                      fontSize: "0.95rem",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      color: "#3C2415",
-                      letterSpacing: "0.8px",
-                    }}
-                  >
+                  <h3 style={{ margin: "0 0 4px 0", fontSize: "0.95rem", fontWeight: 700, textTransform: "uppercase", color: "#3C2415", letterSpacing: "0.8px" }}>
                     Order Summary
                   </h3>
-
-                  {/* Dynamic hint */}
-                  <p
-                    style={{
-                      fontSize: "0.78rem",
-                      color: someSelected ? "#A0522D" : "#9A8070",
-                      fontWeight: someSelected ? 500 : 400,
-                      margin: "0 0 16px",
-                    }}
-                  >
+                  <p style={{ fontSize: "0.78rem", color: someSelected ? "#A0522D" : "#9A8070", fontWeight: someSelected ? 500 : 400, margin: "0 0 16px" }}>
                     {someSelected
-                      ? `Total for ${selected.size} selected item${
-                          selected.size !== 1 ? "s" : ""
-                        }`
+                      ? `Total for ${selected.size} selected item${selected.size !== 1 ? "s" : ""}`
                       : "Select items to checkout a specific order"}
                   </p>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "0.85rem",
-                        color: "#5A3D2B",
-                      }}
-                    >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
                       <span>Subtotal ({summaryCount} items)</span>
                       <span>{formatPrice(summaryTotal)}</span>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "0.85rem",
-                        color: "#5A3D2B",
-                      }}
-                    >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
                       <span>Shipping</span>
-                      <span style={{ color: "#606C38", fontWeight: 600 }}>
-                        Free
-                      </span>
+                      <span style={{ color: "#606C38", fontWeight: 600 }}>Free</span>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "0.85rem",
-                        color: "#5A3D2B",
-                      }}
-                    >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
                       <span>Tax</span>
                       <span>Calculated at checkout</span>
                     </div>
@@ -761,6 +542,7 @@ const updateQuantity = (
                     <span>{formatPrice(summaryTotal)}</span>
                   </div>
 
+                  {/* ── Checkout button — navigates to /checkout ── */}
                   <button
                     onClick={handleCheckout}
                     style={{
@@ -776,17 +558,11 @@ const updateQuantity = (
                       transition: "background 0.2s",
                       marginBottom: "12px",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#5a3a21")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "#3C2415")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#5a3a21")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#3C2415")}
                   >
                     {someSelected
-                      ? `Checkout (${selected.size} item${
-                          selected.size !== 1 ? "s" : ""
-                        })`
+                      ? `Checkout (${selected.size} item${selected.size !== 1 ? "s" : ""})`
                       : "Proceed to Checkout"}
                   </button>
 
@@ -838,8 +614,6 @@ const updateQuantity = (
           }
         `}</style>
       </div>
-
-      {/* Reusable Footer — sits at the bottom */}
       <Footer />
     </main>
   );

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Boxes,
   ShoppingCart,
   Archive,
   Users,
@@ -16,9 +15,8 @@ import styles from "./design.module.scss"; // ✅ MODULE IMPORT
 
 const menu = [
   { name: "Dashboard", path: "/admin", icon: LayoutDashboard },
-  { name: "Products", path: "/admin/products", icon: Boxes },
+  { name: "Inventory", path: "/admin/products", icon: Archive },
   { name: "Orders", path: "/admin/orders", icon: ShoppingCart },
-  { name: "Inventory", path: "/admin/inventory", icon: Archive },
   { name: "Customers", path: "/admin/customers", icon: Users },
   { name: "Reports", path: "/admin/reports", icon: BarChart3 },
   { name: "Settings", path: "/admin/settings", icon: Settings },

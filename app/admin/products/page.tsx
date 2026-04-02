@@ -11,6 +11,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { Package, AlertTriangle, XCircle } from "lucide-react";
 
 type Status = "In Stock" | "Low Stock" | "Out of Stock";
 
@@ -42,6 +43,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Low Stock" | "Out of Stock">("All");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +70,36 @@ export default function ProductsPage() {
     });
     return () => unsub();
   }, []);
+
+  // ─── Derived stats ────────────────────────────────────────────────────────
+  const totalItems = products.length;
+  const lowStockCount = products.filter((p) => p.status === "Low Stock").length;
+  const outOfStock = products.filter((p) => p.status === "Out of Stock").length;
+
+  // ─── Stat cards config ────────────────────────────────────────────────────
+  const STAT_CARDS = [
+    {
+      label: "Total Items",
+      value: totalItems,
+      icon: <Package size={20} color="#a07840" />,
+      active: statusFilter === "All",
+      onClick: () => setStatusFilter("All"),
+    },
+    {
+      label: "Low Stock",
+      value: lowStockCount,
+      icon: <AlertTriangle size={20} color="#a07840" />,
+      active: statusFilter === "Low Stock",
+      onClick: () => setStatusFilter(statusFilter === "Low Stock" ? "All" : "Low Stock"),
+    },
+    {
+      label: "Out of Stock",
+      value: outOfStock,
+      icon: <XCircle size={20} color="#a07840" />,
+      active: statusFilter === "Out of Stock",
+      onClick: () => setStatusFilter(statusFilter === "Out of Stock" ? "All" : "Out of Stock"),
+    },
+  ];
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
   const statusStyles: Record<Status, string> = {
@@ -206,7 +238,9 @@ export default function ProductsPage() {
     const matchCategory =
       selectedCategory === "All Categories" ||
       p.category?.toLowerCase() === selectedCategory.toLowerCase();
-    return matchSearch && matchCategory;
+    const matchStatus =
+      statusFilter === "All" || p.status === statusFilter;
+    return matchSearch && matchCategory && matchStatus;
   });
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -224,6 +258,88 @@ export default function ProductsPage() {
         >
           <span className="text-lg leading-none">+</span> Add Product
         </button>
+      </div>
+
+      {/* ─── Stat Cards ──────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "16px",
+          marginBottom: "24px",
+        }}
+      >
+        {STAT_CARDS.map((card) => (
+          <button
+            key={card.label}
+            onClick={card.onClick}
+            style={{
+              background: "#fff",
+              borderRadius: "14px",
+              padding: "20px 24px",
+              boxShadow: card.active
+                ? "0 0 0 2px #a07840, 0 2px 10px rgba(60,36,20,0.08)"
+                : "0 1px 6px rgba(60,36,20,0.06)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              border: "none",
+              textAlign: "left",
+              transition: "box-shadow 0.18s",
+              fontFamily: "Georgia, serif",
+            }}
+            onMouseEnter={(e) => {
+              if (!card.active)
+                e.currentTarget.style.boxShadow =
+                  "0 0 0 1.5px #d4b896, 0 2px 10px rgba(60,36,20,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              if (!card.active)
+                e.currentTarget.style.boxShadow = "0 1px 6px rgba(60,36,20,0.06)";
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  fontSize: "0.68rem",
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  color: "#9a8070",
+                  margin: "0 0 8px",
+                  fontWeight: 700,
+                }}
+              >
+                {card.label}
+              </p>
+              <p
+                style={{
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: "#1a0e06",
+                  margin: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {loading ? "—" : card.value}
+              </p>
+            </div>
+            <div
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "12px",
+                background: "#fdf3e6",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {card.icon}
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Table Card */}
@@ -258,6 +374,20 @@ export default function ProductsPage() {
             </select>
             <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▾</span>
           </div>
+
+          {/* Active status filter badge */}
+          {statusFilter !== "All" && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#fdf3e6] border border-[#d4b896] text-xs text-[#a07840] font-semibold">
+              {statusFilter}
+              <button
+                onClick={() => setStatusFilter("All")}
+                className="ml-1 text-[#a07840] hover:text-[#2b1a0e] transition font-bold leading-none"
+                title="Clear filter"
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (
