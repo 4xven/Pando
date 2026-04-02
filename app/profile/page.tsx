@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { auth } from "./../lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, Edit2, Check } from "lucide-react";
+import { LogOut, Plus, Edit2, Check, X } from "lucide-react";
 
 // ── Mock order data ──────────────────────────────────────────────────────────
 const MOCK_ORDERS = [
@@ -46,11 +46,30 @@ const BADGE_CLASS: Record<string, string> = {
   shipped: "profile-badge profile-badge--shipped",
 };
 
+// Default state: blends into the tabbar background, muted text, no border
+// Hover state: light warm background, dark brown text — handled via onMouseEnter/Leave
+const signOutBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 16px",
+  marginRight: 4,
+  background: "transparent",
+  color: "#b9a88f",           // muted warm tone — blends with tabbar
+  border: "1px solid transparent",
+  borderRadius: 6,
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [saved, setSaved] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -78,7 +97,6 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  // Derive display name / initials from email
   const emailName = user.displayName ?? user.email?.split("@")[0] ?? "Guest";
   const initials = emailName
     .split(/[\s._-]/)
@@ -90,27 +108,148 @@ export default function ProfilePage() {
     : "2025";
 
   return (
-    <div className="profile-page">
+    <div className="profile-page" style={{ backgroundColor: "#e8dfd3", minHeight: "100vh" }}>
       <Header />
+
+      {/* ── LOGOUT CONFIRMATION MODAL ───────────────────────── */}
+      {showLogoutConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "32px 28px",
+              width: "100%",
+              maxWidth: 380,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowLogoutConfirm(false)}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9a8070",
+                padding: 4,
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "#fdecea",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <LogOut size={22} color="#c0392b" />
+            </div>
+
+            <h2
+              style={{
+                fontSize: "1rem",
+                fontWeight: 700,
+                color: "#2c2118",
+                marginBottom: 8,
+                marginTop: 0,
+              }}
+            >
+              Sign out of Pando?
+            </h2>
+            <p
+              style={{
+                fontSize: "0.83rem",
+                color: "#9a8070",
+                marginBottom: 24,
+                lineHeight: 1.5,
+              }}
+            >
+              You'll need to sign back in to access your orders and account details.
+            </p>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "1px solid #d9cfc4",
+                  borderRadius: 7,
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "#7a5c48",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "#c0392b",
+                  border: "none",
+                  borderRadius: 7,
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <LogOut size={13} />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HERO STRIP ──────────────────────────────────────── */}
       <div className="profile-hero">
         <div className="profile-avatar">{initials || "P"}</div>
-
         <div className="profile-hero-info">
           <p className="profile-hero-since">Member since {memberSince}</p>
           <h1 className="profile-hero-name">{emailName}</h1>
           <p className="profile-hero-email">{user.email}</p>
         </div>
-
         <div className="profile-stats">
           <div className="profile-stat">
-            <div className="profile-stat-value">
-              {MOCK_ORDERS.length}
-            </div>
+            <div className="profile-stat-value">{MOCK_ORDERS.length}</div>
             <div className="profile-stat-label">Orders</div>
           </div>
-         
+          <div className="profile-stat">
+            <div className="profile-stat-value">2</div>
+
+          </div>
           <div className="profile-stat">
             <div className="profile-stat-value">
               ₱{(
@@ -118,8 +257,7 @@ export default function ProfilePage() {
                   (s, o) => s + parseFloat(o.total.replace(/[₱,]/g, "")),
                   0
                 ) / 1000
-              ).toFixed(1)}
-              k
+              ).toFixed(1)}k
             </div>
             <div className="profile-stat-label">Spent</div>
           </div>
@@ -127,7 +265,10 @@ export default function ProfilePage() {
       </div>
 
       {/* ── TAB BAR ─────────────────────────────────────────── */}
-      <div className="profile-tabbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        className="profile-tabbar"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+      >
         <div style={{ display: "flex" }}>
           {TABS.map((tab) => (
             <button
@@ -140,38 +281,25 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Logout button */}
+        {/* Sign Out button — ghost by default, reveals on hover */}
         <button
-          onClick={handleLogout}
-          className="profile-logout-tab"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            marginRight: 4,
-            background: "none",
-            border: "1px solid #d9cfc4",
-            borderRadius: 6,
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            color: "#7a5c48",
-            cursor: "pointer",
-            transition: "background 0.15s, color 0.15s, border-color 0.15s",
-          }}
+          onClick={() => setShowLogoutConfirm(true)}
+          style={signOutBtnStyle}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "#3c2415";
-            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "#3c2415";
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.style.background = "#f0ebe3";
+            btn.style.color = "#3c2415";
+            btn.style.borderColor = "#d9cfc4";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "none";
-            (e.currentTarget as HTMLButtonElement).style.color = "#7a5c48";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "#d9cfc4";
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.style.background = "transparent";
+            btn.style.color = "#f5f5f5";
+            btn.style.borderColor = "transparent";
           }}
         >
           <LogOut size={13} />
-          Sign Out
+          SIGN OUT
         </button>
       </div>
 
@@ -181,15 +309,11 @@ export default function ProfilePage() {
         {/* ════════════ OVERVIEW ════════════ */}
         {activeTab === "Overview" && (
           <>
-            {/* Personal Info */}
             <div className="profile-grid" style={{ marginBottom: 20 }}>
               <div className="profile-card profile-card--full">
                 <div className="profile-card-header">
                   <span className="profile-card-title">Personal Information</span>
-                  <button
-                    className="btn profile-btn-sm"
-                    onClick={() => setActiveTab("Settings")}
-                  >
+                  <button className="btn profile-btn-sm" onClick={() => setActiveTab("Settings")}>
                     <Edit2 size={12} style={{ display: "inline", marginRight: 6 }} />
                     Edit
                   </button>
@@ -223,14 +347,10 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Recent Orders summary */}
             <div className="profile-card">
               <div className="profile-card-header">
                 <span className="profile-card-title">Recent Orders</span>
-                <button
-                  className="btn profile-btn-sm"
-                  onClick={() => setActiveTab("Orders")}
-                >
+                <button className="btn profile-btn-sm" onClick={() => setActiveTab("Orders")}>
                   View All
                 </button>
               </div>
@@ -244,11 +364,7 @@ export default function ProfilePage() {
                       <p className="profile-order-items">{order.items}</p>
                     </div>
                     <div className="profile-order-right">
-                      <span
-                        className={
-                          BADGE_CLASS[order.status] ?? "profile-badge"
-                        }
-                      >
+                      <span className={BADGE_CLASS[order.status] ?? "profile-badge"}>
                         {order.status}
                       </span>
                       <span className="profile-order-total">{order.total}</span>
@@ -282,9 +398,7 @@ export default function ProfilePage() {
                     <span className="profile-order-count">
                       {order.count} item{order.count > 1 ? "s" : ""}
                     </span>
-                    <span
-                      className={BADGE_CLASS[order.status] ?? "profile-badge"}
-                    >
+                    <span className={BADGE_CLASS[order.status] ?? "profile-badge"}>
                       {order.status}
                     </span>
                     <span className="profile-order-total">{order.total}</span>
@@ -294,13 +408,11 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
-        
 
+        
         {/* ════════════ SETTINGS ════════════ */}
         {activeTab === "Settings" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: 20 }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Account Details */}
             <div className="profile-card">
               <div className="profile-card-header">
@@ -312,61 +424,29 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 20 }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div className="profile-form-row">
                   <div>
-                    <p className="profile-info-label" style={{ marginBottom: 8 }}>
-                      Full Name
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      defaultValue={emailName}
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>Full Name</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} defaultValue={emailName} />
                   </div>
                   <div>
-                    <p className="profile-info-label" style={{ marginBottom: 8 }}>
-                      Email
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      defaultValue={user.email ?? ""}
-                      readOnly
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>Email</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} defaultValue={user.email ?? ""} readOnly />
                   </div>
                 </div>
-
                 <div className="profile-form-row">
                   <div>
-                    <p className="profile-info-label" style={{ marginBottom: 8 }}>
-                      Phone Number
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      placeholder="+63 900 000 0000"
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>Phone Number</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} placeholder="+63 900 000 0000" />
                   </div>
                   <div>
-                    <p className="profile-info-label" style={{ marginBottom: 8 }}>
-                      Shoe Size (EU)
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      placeholder="e.g. 43"
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>Shoe Size (EU)</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} placeholder="e.g. 43" />
                   </div>
                 </div>
-
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={handleSave}>
-                    Save Changes
-                  </button>
+                  <button className="btn" onClick={handleSave}>Save Changes</button>
                 </div>
               </div>
             </div>
@@ -376,101 +456,24 @@ export default function ProfilePage() {
               <div className="profile-card-header">
                 <span className="profile-card-title">Change Password</span>
               </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 20 }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div>
-                  <p className="profile-info-label" style={{ marginBottom: 8 }}>
-                    Current Password
-                  </p>
-                  <input
-                    className="pando-input"
-                    style={{ paddingLeft: 16 }}
-                    type="password"
-                    placeholder="••••••••"
-                  />
+                  <p className="profile-info-label" style={{ marginBottom: 8 }}>Current Password</p>
+                  <input className="pando-input" style={{ paddingLeft: 16 }} type="password" placeholder="••••••••" />
                 </div>
                 <div className="profile-form-row">
                   <div>
-                    <p
-                      className="profile-info-label"
-                      style={{ marginBottom: 8 }}
-                    >
-                      New Password
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      type="password"
-                      placeholder="••••••••"
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>New Password</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} type="password" placeholder="••••••••" />
                   </div>
                   <div>
-                    <p
-                      className="profile-info-label"
-                      style={{ marginBottom: 8 }}
-                    >
-                      Confirm New Password
-                    </p>
-                    <input
-                      className="pando-input"
-                      style={{ paddingLeft: 16 }}
-                      type="password"
-                      placeholder="••••••••"
-                    />
+                    <p className="profile-info-label" style={{ marginBottom: 8 }}>Confirm New Password</p>
+                    <input className="pando-input" style={{ paddingLeft: 16 }} type="password" placeholder="••••••••" />
                   </div>
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button className="btn">Update Password</button>
                 </div>
-              </div>
-            </div>
-
-            {/* Danger Zone */}
-            <div
-              className="profile-card"
-              style={{ borderLeft: "3px solid #c0392b" }}
-            >
-              <div className="profile-card-header">
-                <span className="profile-card-title" style={{ color: "#c0392b" }}>
-                  Danger Zone
-                </span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      fontSize: "0.85rem",
-                      color: "#3c2415",
-                      fontWeight: 600,
-                      marginBottom: 4,
-                    }}
-                  >
-                    Sign Out
-                  </p>
-                  <p style={{ fontSize: "0.78rem", color: "#9a8070" }}>
-                    You will be redirected to the login page.
-                  </p>
-                </div>
-                <button
-                  className="btn"
-                  style={{ background: "#3c2415", float: "none" }}
-                  onClick={handleLogout}
-                >
-                  <LogOut
-                    size={13}
-                    style={{ display: "inline", marginRight: 8 }}
-                  />
-                  Sign Out
-                </button>
               </div>
             </div>
           </div>
