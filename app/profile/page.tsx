@@ -130,16 +130,52 @@ export default function ProfilePage() {
       </div>
 
       {/* ── TAB BAR ─────────────────────────────────────────── */}
-      <div className="profile-tabbar">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            className={`profile-tab${activeTab === tab ? " profile-tab--active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="profile-tabbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex" }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              className={`profile-tab${activeTab === tab ? " profile-tab--active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Logout button */}
+        <button
+          onClick={handleLogout}
+          className="profile-logout-tab"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            marginRight: 4,
+            background: "none",
+            border: "1px solid #d9cfc4",
+            borderRadius: 6,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            color: "#7a5c48",
+            cursor: "pointer",
+            transition: "background 0.15s, color 0.15s, border-color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "#3c2415";
+            (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "#3c2415";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "none";
+            (e.currentTarget as HTMLButtonElement).style.color = "#7a5c48";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "#d9cfc4";
+          }}
+        >
+          <LogOut size={13} />
+          Sign Out
+        </button>
       </div>
 
       {/* ── CONTENT ─────────────────────────────────────────── */}
