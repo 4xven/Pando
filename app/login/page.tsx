@@ -15,7 +15,11 @@ import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
@@ -33,7 +37,11 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         // LOGIN
-        const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password,
+        );
         const user = userCredential.user;
 
         // ✅ Fetch role from Firestore
@@ -47,22 +55,21 @@ export default function LoginPage() {
 
         // ✅ Redirect based on role
         localStorage.setItem("pando_logged_in", "true");
-localStorage.setItem("pando_role", role);
-window.dispatchEvent(new Event("pando_auth_change"));
+        localStorage.setItem("pando_role", role);
+        window.dispatchEvent(new Event("pando_auth_change"));
 
-// ✅ ADD THIS BACK
-if (role === "admin") {
-  router.push("/admin/dashboard");
-} else {
-  router.push("/");
-}
-
+        // ✅ ADD THIS BACK
+        if (role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/");
+        }
       } else {
         // SIGN UP
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           formData.email,
-          formData.password
+          formData.password,
         );
 
         const user = userCredential.user;
@@ -96,14 +103,17 @@ if (role === "admin") {
 
   const panelVariants: Variants = {
     hidden: { opacity: 0, y: 16 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.45, ease: "easeOut" },
+    },
     exit: { opacity: 0, y: -16, transition: { duration: 0.3, ease: "easeIn" } },
   };
 
   return (
     <div className="pando-page">
       <div className="pando-card">
-
         {/* HERO */}
         <div className="pando-hero">
           <div className="pando-hero-bg" />
@@ -119,8 +129,12 @@ if (role === "admin") {
                 transition={{ duration: 0.5 }}
                 className="pando-hero-text"
               >
-                <h2 className="pando-hero-heading">Welcome back to the craft.</h2>
-                <p className="pando-hero-sub">Sign in to access your exclusive orders and saved items.</p>
+                <h2 className="pando-hero-heading">
+                  Welcome back to the craft.
+                </h2>
+                <p className="pando-hero-sub">
+                  Sign in to access your exclusive orders and saved items.
+                </p>
               </motion.div>
             ) : (
               <motion.div
@@ -132,7 +146,9 @@ if (role === "admin") {
                 className="pando-hero-text"
               >
                 <h2 className="pando-hero-heading">Join our heritage.</h2>
-                <p className="pando-hero-sub">Create an account to experience exclusive member benefits.</p>
+                <p className="pando-hero-sub">
+                  Create an account to experience exclusive member benefits.
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -171,7 +187,9 @@ if (role === "admin") {
                 <div className="pando-field">
                   <label className="pando-label">Full Name</label>
                   <div className="pando-input-wrap">
-                    <span className="pando-input-icon"><User size={14} /></span>
+                    <span className="pando-input-icon">
+                      <User size={14} />
+                    </span>
                     <input
                       type="text"
                       name="name"
@@ -187,7 +205,9 @@ if (role === "admin") {
               <div className="pando-field">
                 <label className="pando-label">Email Address</label>
                 <div className="pando-input-wrap">
-                  <span className="pando-input-icon"><Mail size={14} /></span>
+                  <span className="pando-input-icon">
+                    <Mail size={14} />
+                  </span>
                   <input
                     type="email"
                     name="email"
@@ -200,39 +220,48 @@ if (role === "admin") {
                 </div>
               </div>
 
-             <div className="pando-field">
-  <div className="pando-label-row">
-    <label className="pando-label">Password</label>
-    {isLogin && <button type="button" className="pando-forgot">Forgot?</button>}
-  </div>
-  <div className="pando-input-wrap" style={{ position: "relative" }}>
-    <span className="pando-input-icon"><Lock size={14} /></span>
-    <input
-      type={showPassword ? "text" : "password"}
-      name="password"
-      placeholder="Password"
-      value={formData.password}
-      onChange={handleChange}
-      required
-      className="pando-input"
-      style={{ paddingRight: "2rem" }} // ✅ space for the eye icon
-    />
-    <span
-      onClick={() => setShowPassword(!showPassword)}
-      style={{
-        position: "absolute",
-        right: "0.9rem", 
-        top: "50%",
-        transform: "translateY(-50%)",
-        cursor: "pointer",
-        zIndex: 10,
-        color: "#5558",
-      }}
-    >
-      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-    </span>
-  </div>
-</div>
+              <div className="pando-field">
+                <div className="pando-label-row">
+                  <label className="pando-label">Password</label>
+                  {isLogin && (
+                    <button type="button" className="pando-forgot">
+                      Forgot?
+                    </button>
+                  )}
+                </div>
+                <div
+                  className="pando-input-wrap"
+                  style={{ position: "relative" }}
+                >
+                  <span className="pando-input-icon">
+                    <Lock size={14} />
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    className="pando-input"
+                    style={{ paddingRight: "2rem" }} // ✅ space for the eye icon
+                  />
+                  <span
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "0.9rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      cursor: "pointer",
+                      zIndex: 10,
+                      color: "#5558",
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </span>
+                </div>
+              </div>
 
               <motion.button
                 type="submit"
@@ -240,10 +269,14 @@ if (role === "admin") {
                 whileTap={{ scale: 0.98 }}
                 className="pando-submit"
               >
-                {isSubmitting
-                  ? "Processing..."
-                  : <>{isLogin ? "Sign In" : "Create Account"}<ArrowRight size={14} /></>
-                }
+                {isSubmitting ? (
+                  "Processing..."
+                ) : (
+                  <>
+                    {isLogin ? "Sign In" : "Create Account"}
+                    <ArrowRight size={14} />
+                  </>
+                )}
               </motion.button>
             </motion.form>
           </AnimatePresence>

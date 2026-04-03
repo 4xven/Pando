@@ -9,6 +9,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  Mail,
 } from "lucide-react";
 
 import styles from "./design.module.scss"; // ✅ MODULE IMPORT
@@ -18,6 +19,7 @@ const menu = [
   { name: "Inventory", path: "/admin/products", icon: Archive },
   { name: "Orders", path: "/admin/orders", icon: ShoppingCart },
   { name: "Customers", path: "/admin/customers", icon: Users },
+    { name: "Messages",   path: "/admin/messages",  icon: Mail }, 
   { name: "Reports", path: "/admin/reports", icon: BarChart3 },
   { name: "Settings", path: "/admin/settings", icon: Settings },
 ];

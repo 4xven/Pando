@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { db } from "../../lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Search, ChevronDown, ChevronUp, Users, ShieldCheck } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Users,
+  ShieldCheck,
+} from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Customer {
@@ -19,7 +25,10 @@ interface Customer {
 }
 
 type RoleFilter = "All" | "user" | "admin";
-type SortKey = keyof Pick<Customer, "name" | "totalOrders" | "totalSpent" | "joinDate" | "createdAt">;
+type SortKey = keyof Pick<
+  Customer,
+  "name" | "totalOrders" | "totalSpent" | "joinDate" | "createdAt"
+>;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CustomersPage() {
@@ -55,9 +64,8 @@ export default function CustomersPage() {
   }, []);
 
   // ── Derived stats ────────────────────────────────────────────────────────────
-  const totalUsers   = customers.filter((c) => c.role === "user").length;
-  const totalAdmins  = customers.filter((c) => c.role === "admin").length;
- 
+  const totalUsers = customers.filter((c) => c.role === "user").length;
+  const totalAdmins = customers.filter((c) => c.role === "admin").length;
 
   const STAT_CARDS = [
     {
@@ -83,7 +91,10 @@ export default function CustomersPage() {
   // ── Sorting ──────────────────────────────────────────────────────────────────
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((p) => !p);
-    else { setSortKey(key); setSortAsc(true); }
+    else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
   };
 
   // ── Filtered + sorted list ───────────────────────────────────────────────────
@@ -105,23 +116,28 @@ export default function CustomersPage() {
         : String(bv).localeCompare(String(av));
     });
 
-  const formatPrice = (n: number) => "₱" + new Intl.NumberFormat("en-PH").format(n);
+  const formatPrice = (n: number) =>
+    "₱" + new Intl.NumberFormat("en-PH").format(n);
 
   const SortIcon = ({ col }: { col: SortKey }) =>
     sortKey === col ? (
-      sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+      sortAsc ? (
+        <ChevronUp size={12} />
+      ) : (
+        <ChevronDown size={12} />
+      )
     ) : (
       <ChevronDown size={12} style={{ opacity: 0.3 }} />
     );
 
   const COL_HEADERS: { label: string; key?: SortKey; width?: string }[] = [
-    { label: "Name",         key: "name",        width: "22%" },
-    { label: "Email",                             width: "22%" },
-    { label: "Phone",                             width: "16%" },
+    { label: "Name", key: "name", width: "22%" },
+    { label: "Email", width: "22%" },
+    { label: "Phone", width: "16%" },
     { label: "Total Orders", key: "totalOrders", width: "12%" },
-    { label: "Total Spent",  key: "totalSpent",  width: "13%" },
-    { label: "Role",                              width: "8%"  },
-    { label: "Joined",       key: "createdAt",   width: "7%"  },
+    { label: "Total Spent", key: "totalSpent", width: "13%" },
+    { label: "Role", width: "8%" },
+    { label: "Joined", key: "createdAt", width: "7%" },
   ];
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -136,7 +152,14 @@ export default function CustomersPage() {
     >
       {/* Page Title */}
       <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1a0e06", margin: "0 0 4px" }}>
+        <h1
+          style={{
+            fontSize: "1.75rem",
+            fontWeight: 700,
+            color: "#1a0e06",
+            margin: "0 0 4px",
+          }}
+        >
           Customer Management
         </h1>
         <p style={{ fontSize: "0.85rem", color: "#9a8070", margin: 0 }}>
@@ -182,7 +205,8 @@ export default function CustomersPage() {
               }}
               onMouseLeave={(e) => {
                 if (!active)
-                  e.currentTarget.style.boxShadow = "0 1px 6px rgba(60,36,20,0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 6px rgba(60,36,20,0.06)";
               }}
             >
               <div>
@@ -252,7 +276,12 @@ export default function CustomersPage() {
             <Search
               size={15}
               color="#b0a090"
-              style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}
+              style={{
+                position: "absolute",
+                left: 14,
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
             />
             <input
               type="text"
@@ -293,7 +322,11 @@ export default function CustomersPage() {
                 textTransform: "uppercase",
               }}
             >
-              {roleFilter === "admin" ? <ShieldCheck size={12} /> : <Users size={12} />}
+              {roleFilter === "admin" ? (
+                <ShieldCheck size={12} />
+              ) : (
+                <Users size={12} />
+              )}
               {roleFilter === "admin" ? "Admins" : "Customers"}
               <button
                 onClick={() => setRoleFilter("All")}
@@ -317,7 +350,14 @@ export default function CustomersPage() {
 
         {/* Table */}
         {loading ? (
-          <div style={{ padding: "64px", textAlign: "center", color: "#9a8070", fontSize: "0.88rem" }}>
+          <div
+            style={{
+              padding: "64px",
+              textAlign: "center",
+              color: "#9a8070",
+              fontSize: "0.88rem",
+            }}
+          >
             Loading accounts…
           </div>
         ) : (
@@ -344,7 +384,13 @@ export default function CustomersPage() {
                     }}
                     onClick={() => key && handleSort(key)}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
                       {label}
                       {key && <SortIcon col={key} />}
                     </span>
@@ -358,7 +404,12 @@ export default function CustomersPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    style={{ textAlign: "center", padding: "48px", color: "#9a8070", fontSize: "0.88rem" }}
+                    style={{
+                      textAlign: "center",
+                      padding: "48px",
+                      color: "#9a8070",
+                      fontSize: "0.88rem",
+                    }}
                   >
                     No accounts found.
                   </td>
@@ -369,40 +420,60 @@ export default function CustomersPage() {
                   const isLast = i === filtered.length - 1;
 
                   return (
-                    <>
+                    <React.Fragment key={customer.id}>
                       <tr
-                        key={customer.id}
-                        onClick={() => setExpandedId(isExpanded ? null : customer.id)}
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : customer.id)
+                        }
                         style={{
-                          borderBottom: isLast && !isExpanded ? "none" : "1px solid #f7f3ef",
+                          borderBottom:
+                            isLast && !isExpanded
+                              ? "none"
+                              : "1px solid #f7f3ef",
                           background: isExpanded ? "#fffcf9" : "transparent",
                           cursor: "pointer",
                           transition: "background 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           if (!isExpanded)
-                            (e.currentTarget as HTMLTableRowElement).style.background = "#fdf9f5";
+                            (
+                              e.currentTarget as HTMLTableRowElement
+                            ).style.background = "#fdf9f5";
                         }}
                         onMouseLeave={(e) => {
                           if (!isExpanded)
-                            (e.currentTarget as HTMLTableRowElement).style.background = "transparent";
+                            (
+                              e.currentTarget as HTMLTableRowElement
+                            ).style.background = "transparent";
                         }}
                       >
                         {/* Name + avatar */}
                         <td style={{ padding: "14px 20px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
                             <div
                               style={{
                                 width: "34px",
                                 height: "34px",
                                 borderRadius: "50%",
-                                background: customer.role === "admin" ? "#e0d4f0" : "#e8ddd0",
+                                background:
+                                  customer.role === "admin"
+                                    ? "#e0d4f0"
+                                    : "#e8ddd0",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontSize: "0.8rem",
                                 fontWeight: 700,
-                                color: customer.role === "admin" ? "#5a3a80" : "#5a3a20",
+                                color:
+                                  customer.role === "admin"
+                                    ? "#5a3a80"
+                                    : "#5a3a20",
                                 flexShrink: 0,
                                 letterSpacing: "0.5px",
                               }}
@@ -414,18 +485,34 @@ export default function CustomersPage() {
                                 .join("")}
                             </div>
                             <span
-                              style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1a0e06" }}
+                              style={{
+                                fontSize: "0.88rem",
+                                fontWeight: 600,
+                                color: "#1a0e06",
+                              }}
                             >
                               {customer.name}
                             </span>
                           </div>
                         </td>
 
-                        <td style={{ padding: "14px 20px", fontSize: "0.85rem", color: "#5a4a3a" }}>
+                        <td
+                          style={{
+                            padding: "14px 20px",
+                            fontSize: "0.85rem",
+                            color: "#5a4a3a",
+                          }}
+                        >
                           {customer.email}
                         </td>
 
-                        <td style={{ padding: "14px 20px", fontSize: "0.85rem", color: "#7a6050" }}>
+                        <td
+                          style={{
+                            padding: "14px 20px",
+                            fontSize: "0.85rem",
+                            color: "#7a6050",
+                          }}
+                        >
                           {customer.phone ?? "—"}
                         </td>
 
@@ -465,9 +552,13 @@ export default function CustomersPage() {
                               letterSpacing: "1px",
                               textTransform: "uppercase",
                               background:
-                                customer.role === "admin" ? "#ede8f8" : "#e8f4ec",
+                                customer.role === "admin"
+                                  ? "#ede8f8"
+                                  : "#e8f4ec",
                               color:
-                                customer.role === "admin" ? "#6b3fa0" : "#2e7d46",
+                                customer.role === "admin"
+                                  ? "#6b3fa0"
+                                  : "#2e7d46",
                             }}
                           >
                             {customer.role === "admin" ? (
@@ -479,13 +570,22 @@ export default function CustomersPage() {
                           </span>
                         </td>
 
-                        <td style={{ padding: "14px 20px", fontSize: "0.82rem", color: "#7a6050" }}>
+                        <td
+                          style={{
+                            padding: "14px 20px",
+                            fontSize: "0.82rem",
+                            color: "#7a6050",
+                          }}
+                        >
                           {customer.createdAt
-                            ? new Date(customer.createdAt).toLocaleDateString("en-PH", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })
+                            ? new Date(customer.createdAt).toLocaleDateString(
+                                "en-PH",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                },
+                              )
                             : "—"}
                         </td>
                       </tr>
@@ -498,7 +598,9 @@ export default function CustomersPage() {
                             style={{
                               padding: "0 20px 20px",
                               background: "#fffcf9",
-                              borderBottom: !isLast ? "1px solid #f0ebe4" : "none",
+                              borderBottom: !isLast
+                                ? "1px solid #f0ebe4"
+                                : "none",
                             }}
                           >
                             <div
@@ -509,19 +611,28 @@ export default function CustomersPage() {
                               }}
                             >
                               {[
-                                { label: "Full Name",     value: customer.name },
-                                { label: "Email",         value: customer.email },
-                                { label: "Phone",         value: customer.phone ?? "—" },
-                                { label: "Role",          value: customer.role },
-                                { label: "Total Orders",  value: String(customer.totalOrders ?? 0) },
-                                { label: "Total Spent",   value: formatPrice(customer.totalSpent ?? 0) },
+                                { label: "Full Name", value: customer.name },
+                                { label: "Email", value: customer.email },
+                                {
+                                  label: "Phone",
+                                  value: customer.phone ?? "—",
+                                },
+                                { label: "Role", value: customer.role },
+                                {
+                                  label: "Total Orders",
+                                  value: String(customer.totalOrders ?? 0),
+                                },
+                                {
+                                  label: "Total Spent",
+                                  value: formatPrice(customer.totalSpent ?? 0),
+                                },
                                 {
                                   label: "Avg per Order",
                                   value: formatPrice(
                                     Math.round(
                                       (customer.totalSpent ?? 0) /
-                                        (customer.totalOrders || 1)
-                                    )
+                                        (customer.totalOrders || 1),
+                                    ),
                                   ),
                                 },
                                 { label: "User ID", value: customer.id },
@@ -563,7 +674,7 @@ export default function CustomersPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })
               )}
@@ -585,7 +696,9 @@ export default function CustomersPage() {
           <span>
             {filtered.length} of {customers.length} accounts
             {roleFilter !== "All" && (
-              <span style={{ marginLeft: "6px", color: "#a07840", fontWeight: 700 }}>
+              <span
+                style={{ marginLeft: "6px", color: "#a07840", fontWeight: 700 }}
+              >
                 · Filtered: {roleFilter}
               </span>
             )}

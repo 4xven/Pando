@@ -65,21 +65,21 @@ export default function SettingsPage() {
       // Update email
       if (profileForm.email !== user.email) {
         if (!profileForm.currentPassword) {
-          return alert(
-            "To change email, please enter your current password."
-          );
+          return alert("To change email, please enter your current password.");
         }
         const credential = EmailAuthProvider.credential(
           user.email!,
-          profileForm.currentPassword
+          profileForm.currentPassword,
         );
         await reauthenticateWithCredential(user, credential);
 
         await fbUpdateEmail(user, profileForm.email);
-        await updateDoc(doc(db, "users", user.uid), { email: profileForm.email });
+        await updateDoc(doc(db, "users", user.uid), {
+          email: profileForm.email,
+        });
 
         alert(
-          "Email updated successfully. For security, you will be logged out."
+          "Email updated successfully. For security, you will be logged out.",
         );
         await auth.signOut();
         window.location.href = "/login";
@@ -97,14 +97,14 @@ export default function SettingsPage() {
 
         const credential = EmailAuthProvider.credential(
           user.email!,
-          profileForm.currentPassword
+          profileForm.currentPassword,
         );
         await reauthenticateWithCredential(user, credential);
 
         await updatePassword(user, profileForm.newPassword);
 
         alert(
-          "Password updated successfully. For security, you will be logged out."
+          "Password updated successfully. For security, you will be logged out.",
         );
         await auth.signOut();
         window.location.href = "/login";
@@ -135,12 +135,15 @@ export default function SettingsPage() {
         const errCode = (error as any).code;
         if (errCode === "auth/requires-recent-login") {
           alert(
-            "Please log out and log in again to update sensitive information."
+            "Please log out and log in again to update sensitive information.",
           );
         } else if (errCode === "auth/id-token-expired") {
           alert("Session expired. Please refresh the page or log in again.");
         } else {
-          alert((error as any).message || "Something went wrong while saving profile.");
+          alert(
+            (error as any).message ||
+              "Something went wrong while saving profile.",
+          );
         }
       } else {
         alert("Something went wrong while saving profile.");

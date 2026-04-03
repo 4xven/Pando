@@ -32,7 +32,6 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.right}>
-        
         {/* User */}
         <div className={styles.user}>
           <div className={styles.avatar}>

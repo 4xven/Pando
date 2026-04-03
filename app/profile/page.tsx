@@ -4,7 +4,7 @@ import Header from "../components/shared/header";
 import Footer from "../components/shared/footer";
 import { User as FirebaseUser } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { auth, db } from "./../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import {
   signOut,
   updateProfile,
@@ -17,7 +17,6 @@ import {
   getDoc,
   setDoc,
   DocumentSnapshot,
-  updateDoc,
   collection,
   query,
   where,
@@ -26,7 +25,21 @@ import {
   runTransaction,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { LogOut, Edit2, Check, X, Loader2, Package, XCircle, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  LogOut,
+  Edit2,
+  Check,
+  X,
+  Loader2,
+  Package,
+  XCircle,
+  ShoppingBag,
+  ChevronDown,
+  ChevronUp,
+  Navigation,
+  MapPin,
+  CheckCircle,
+} from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface UserProfile {
@@ -73,12 +86,40 @@ const TABS = ["Overview", "Orders", "Settings"] as const;
 type Tab = (typeof TABS)[number];
 
 // Status badge config — locked statuses cannot be changed by user
-const STATUS_BADGE: Record<string, { bg: string; color: string; dot: string; label: string }> = {
-  pending:    { bg: "#fef9ec", color: "#92400e", dot: "#f59e0b", label: "Pending" },
-  processing: { bg: "#eff6ff", color: "#1e40af", dot: "#3b82f6", label: "Processing" },
-  shipped:    { bg: "#f5f3ff", color: "#5b21b6", dot: "#8b5cf6", label: "Shipped" },
-  delivered:  { bg: "#f0fdf4", color: "#065f46", dot: "#22c55e", label: "Delivered" },
-  cancelled:  { bg: "#fff1f2", color: "#9f1239", dot: "#f43f5e", label: "Cancelled" },
+const STATUS_BADGE: Record<
+  string,
+  { bg: string; color: string; dot: string; label: string }
+> = {
+  pending: {
+    bg: "#fef9ec",
+    color: "#92400e",
+    dot: "#f59e0b",
+    label: "Pending",
+  },
+  processing: {
+    bg: "#eff6ff",
+    color: "#1e40af",
+    dot: "#3b82f6",
+    label: "Processing",
+  },
+  shipped: {
+    bg: "#f5f3ff",
+    color: "#5b21b6",
+    dot: "#8b5cf6",
+    label: "Shipped",
+  },
+  delivered: {
+    bg: "#f0fdf4",
+    color: "#065f46",
+    dot: "#22c55e",
+    label: "Delivered",
+  },
+  cancelled: {
+    bg: "#fff1f2",
+    color: "#9f1239",
+    dot: "#f43f5e",
+    label: "Cancelled",
+  },
 };
 
 const CANCELLABLE_STATUSES = ["pending"];
@@ -96,33 +137,339 @@ const formatDate = (ts: { seconds: number } | null) => {
   });
 };
 
+// ── Nominatim geocoding helpers ───────────────────────────────────────────────
+const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
+
+interface NominatimResult {
+  display_name: string;
+  address: {
+    road?: string;
+    house_number?: string;
+    suburb?: string;
+    village?: string;
+    town?: string;
+    city?: string;
+    municipality?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+    country_code?: string;
+    [key: string]: string | undefined;
+  };
+}
+
+async function reverseGeocode(lat: number, lon: number): Promise<NominatimResult | null> {
+  try {
+    const res = await fetch(
+      `${NOMINATIM_BASE}/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+      { headers: { "Accept-Language": "en" } },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as NominatimResult;
+  } catch { return null; }
+}
+
+async function searchAddress(query: string): Promise<NominatimResult[]> {
+  if (!query.trim()) return [];
+  try {
+    const res = await fetch(
+      `${NOMINATIM_BASE}/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ph&addressdetails=1&limit=5`,
+      { headers: { "Accept-Language": "en" } },
+    );
+    if (!res.ok) return [];
+    return (await res.json()) as NominatimResult[];
+  } catch { return []; }
+}
+
+// ── Profile Geolocation Button ────────────────────────────────────────────────
+function ProfileGeolocationButton({
+  onDetected,
+}: {
+  onDetected: (city: string, province: string, street: string, postal: string) => void;
+}) {
+  const [state, setState] = useState<"idle" | "locating" | "geocoding" | "done" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleDetect = async () => {
+    if (!navigator.geolocation) {
+      setErrorMsg("Geolocation is not supported by your browser.");
+      setState("error");
+      return;
+    }
+    setState("locating");
+    setErrorMsg("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setState("geocoding");
+        const result = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        if (!result) {
+          setErrorMsg("Could not determine your address. Please fill in manually.");
+          setState("error");
+          return;
+        }
+        const addr = result.address;
+        const streetParts = [addr.house_number, addr.road, addr.suburb].filter(Boolean);
+        const street = streetParts.join(", ");
+        const city = addr.city ?? addr.town ?? addr.municipality ?? addr.suburb ?? addr.village ?? "";
+        const province = addr.county ?? addr.state ?? "";
+        const postal = addr.postcode ?? "";
+        onDetected(city, province, street, postal);
+        setState("done");
+        setTimeout(() => setState("idle"), 2500);
+      },
+      (err) => {
+        let msg = "Location access denied.";
+        if (err.code === 1) msg = "Please allow location access in your browser.";
+        else if (err.code === 2) msg = "Location unavailable. Check your connection.";
+        else if (err.code === 3) msg = "Location request timed out.";
+        setErrorMsg(msg);
+        setState("error");
+        setTimeout(() => setState("idle"), 4000);
+      },
+      { timeout: 10000, enableHighAccuracy: true },
+    );
+  };
+
+  const isLoading = state === "locating" || state === "geocoding";
+  const isDone = state === "done";
+  const isError = state === "error";
+  const label = {
+    idle: "Detect My Location",
+    locating: "Getting GPS…",
+    geocoding: "Looking up address…",
+    done: "Location Detected!",
+    error: errorMsg || "Failed. Try again.",
+  }[state];
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button
+        type="button"
+        onClick={handleDetect}
+        disabled={isLoading || isDone}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          padding: "10px 18px",
+          background: isDone ? "#d1fae5" : isError ? "#fee2e2" : "#fff",
+          color: isDone ? "#065f46" : isError ? "#991b1b" : "#3C2415",
+          border: `1.5px solid ${isDone ? "#86efac" : isError ? "#fca5a5" : "#e0d8d0"}`,
+          borderRadius: 10, fontSize: "0.83rem", fontWeight: 600,
+          cursor: isLoading || isDone ? "not-allowed" : "pointer",
+          fontFamily: "inherit", transition: "all 0.2s",
+          opacity: isLoading || isDone ? 0.8 : 1,
+        }}
+        onMouseEnter={(e) => { if (!isLoading && !isDone) e.currentTarget.style.borderColor = "#8a6a50"; }}
+        onMouseLeave={(e) => { if (!isLoading && !isDone) e.currentTarget.style.borderColor = isError ? "#fca5a5" : "#e0d8d0"; }}
+      >
+        {isLoading ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : isDone ? (
+          <CheckCircle size={14} />
+        ) : (
+          <Navigation size={14} />
+        )}
+        {label}
+      </button>
+      <p style={{ fontSize: "0.68rem", color: "#9a8070", margin: "5px 0 0" }}>
+        Uses your device&apos;s GPS + OpenStreetMap. No personal data is stored.
+      </p>
+    </div>
+  );
+}
+
+// ── Profile Address Search ────────────────────────────────────────────────────
+function ProfileAddressSearch({
+  onSelect,
+}: {
+  onSelect: (city: string, province: string, street: string, postal: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+useEffect(() => {
+  let active = true;
+
+  const timer = setTimeout(async () => {
+    if (query.length < 4) {
+      if (!active) return;
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+
+    setLoading(true);
+    const found = await searchAddress(query + ", Philippines");
+
+    if (!active) return;
+    setResults(found);
+    setOpen(found.length > 0);
+    setLoading(false);
+  }, 600);
+
+  return () => {
+    active = false;
+    clearTimeout(timer);
+  };
+}, [query]);
+
+  const handleSelect = (result: NominatimResult) => {
+    const addr = result.address;
+    const streetParts = [addr.house_number, addr.road, addr.suburb].filter(Boolean);
+    const street = streetParts.join(", ");
+    const city = addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? "";
+    const province = addr.county ?? addr.state ?? "";
+    const postal = addr.postcode ?? "";
+    onSelect(city, province, street, postal);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <p style={{
+        fontSize: "0.68rem", fontWeight: 700, letterSpacing: "2px",
+        textTransform: "uppercase", color: "#9a8070", marginBottom: 8, marginTop: 0,
+      }}>
+        Search Address (optional)
+      </p>
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={query}
+          placeholder="e.g. Marikina City, Pasig, Cebu…"
+          onChange={(e) => setQuery(e.target.value)}
+          style={{
+            width: "100%", padding: "10px 40px 10px 16px",
+            border: "1.5px solid #e0d8d0", borderRadius: 8,
+            fontSize: "0.88rem", color: "#3C2415", background: "#fff",
+            outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+            transition: "border-color 0.2s",
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "#8a6a50")}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "#e0d8d0";
+            setTimeout(() => setOpen(false), 200);
+          }}
+        />
+        {loading && (
+          <Loader2 size={15} color="#9a8070" className="animate-spin" style={{
+            position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+          }} />
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <ul style={{
+          position: "absolute", zIndex: 100, top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "#fff", border: "1.5px solid #e0d8d0", borderRadius: 10,
+          listStyle: "none", margin: 0, padding: "4px 0",
+          boxShadow: "0 8px 24px rgba(60,36,20,0.12)", maxHeight: 220, overflowY: "auto",
+        }}>
+          {results.map((r, i) => (
+            <li key={i} onClick={() => handleSelect(r)} style={{
+              padding: "10px 14px", fontSize: "0.83rem", color: "#3C2415",
+              cursor: "pointer", borderBottom: i < results.length - 1 ? "1px solid #f0ebe4" : "none",
+              lineHeight: 1.4,
+            }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#f7f3ef")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <MapPin size={12} color="#9a8070" style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+              {r.display_name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── Reusable Input ────────────────────────────────────────────────────────────
 function FormInput({
-  label, value, onChange, placeholder, type = "text", readOnly = false,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  readOnly = false,
 }: {
-  label: string; value: string; onChange?: (v: string) => void;
-  placeholder?: string; type?: string; readOnly?: boolean;
+  label: string;
+  value: string;
+  onChange?: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
-      <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#9a8070", marginBottom: 8, marginTop: 0 }}>
+      <p
+        style={{
+          fontSize: "0.68rem",
+          fontWeight: 700,
+          letterSpacing: "2px",
+          textTransform: "uppercase",
+          color: "#9a8070",
+          marginBottom: 8,
+          marginTop: 0,
+        }}
+      >
         {label}
       </p>
       <input
-        type={type} value={value} placeholder={placeholder} readOnly={readOnly}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        readOnly={readOnly}
         onChange={(e) => onChange?.(e.target.value)}
-        style={{ width: "100%", padding: "10px 16px", border: "1.5px solid #e0d8d0", borderRadius: 8, fontSize: "0.88rem", color: readOnly ? "#9a8070" : "#3C2415", background: readOnly ? "#f7f3ef" : "#fff", outline: "none", fontFamily: "inherit", boxSizing: "border-box", cursor: readOnly ? "not-allowed" : "text" }}
-        onFocus={(e) => { if (!readOnly) e.currentTarget.style.borderColor = "#8a6a50"; }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = "#e0d8d0"; }}
+        style={{
+          width: "100%",
+          padding: "10px 16px",
+          border: "1.5px solid #e0d8d0",
+          borderRadius: 8,
+          fontSize: "0.88rem",
+          color: readOnly ? "#9a8070" : "#3C2415",
+          background: readOnly ? "#f7f3ef" : "#fff",
+          outline: "none",
+          fontFamily: "inherit",
+          boxSizing: "border-box",
+          cursor: readOnly ? "not-allowed" : "text",
+        }}
+        onFocus={(e) => {
+          if (!readOnly) e.currentTarget.style.borderColor = "#8a6a50";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "#e0d8d0";
+        }}
       />
     </div>
   );
 }
 
 // ── Alert banner ──────────────────────────────────────────────────────────────
-function Alert({ type, message }: { type: "success" | "error"; message: string }) {
+function Alert({
+  type,
+  message,
+}: {
+  type: "success" | "error";
+  message: string;
+}) {
   return (
-    <div style={{ padding: "10px 16px", borderRadius: 8, fontSize: "0.83rem", fontWeight: 500, marginBottom: 16, background: type === "success" ? "#d1fae5" : "#fee2e2", color: type === "success" ? "#065f46" : "#991b1b", display: "flex", alignItems: "center", gap: 8 }}>
+    <div
+      style={{
+        padding: "10px 16px",
+        borderRadius: 8,
+        fontSize: "0.83rem",
+        fontWeight: 500,
+        marginBottom: 16,
+        background: type === "success" ? "#d1fae5" : "#fee2e2",
+        color: type === "success" ? "#065f46" : "#991b1b",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
       {type === "success" ? <Check size={14} /> : <X size={14} />}
       {message}
     </div>
@@ -133,8 +480,29 @@ function Alert({ type, message }: { type: "success" | "error"; message: string }
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_BADGE[status?.toLowerCase()] ?? STATUS_BADGE["pending"];
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700, background: cfg.bg, color: cfg.color, letterSpacing: "0.3px" }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "4px 10px",
+        borderRadius: 20,
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        background: cfg.bg,
+        color: cfg.color,
+        letterSpacing: "0.3px",
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: cfg.dot,
+          flexShrink: 0,
+        }}
+      />
       {cfg.label}
     </span>
   );
@@ -159,18 +527,59 @@ function OrderCard({
   const extraCount = (order.items?.length ?? 1) - 1;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #ede6df", overflow: "hidden", transition: "box-shadow 0.2s", marginBottom: 12 }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(60,36,20,0.08)")}
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: 14,
+        border: "1px solid #ede6df",
+        overflow: "hidden",
+        transition: "box-shadow 0.2s",
+        marginBottom: 12,
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.boxShadow = "0 4px 18px rgba(60,36,20,0.08)")
+      }
       onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
     >
       {/* Card header row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", cursor: "pointer" }} onClick={onToggle}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "14px 18px",
+          cursor: "pointer",
+        }}
+        onClick={onToggle}
+      >
         {/* Product image */}
-        <div style={{ width: 64, height: 64, borderRadius: 10, background: "#f7f3ef", flexShrink: 0, overflow: "hidden", border: "1px solid #ede6df" }}>
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 10,
+            background: "#f7f3ef",
+            flexShrink: 0,
+            overflow: "hidden",
+            border: "1px solid #ede6df",
+          }}
+        >
           {firstItem?.image ? (
-            <img src={firstItem.image} alt={firstItem.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img
+              src={firstItem.image}
+              alt={firstItem.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           ) : (
-            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Package size={22} color="#c8b8a8" />
             </div>
           )}
@@ -178,26 +587,73 @@ function OrderCard({
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#1a0e06", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 3,
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "0.9rem",
+                fontWeight: 700,
+                color: "#1a0e06",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
               {firstItem?.name ?? "Order"}
             </p>
             {extraCount > 0 && (
-              <span style={{ fontSize: "0.72rem", background: "#f0ebe4", color: "#7a6050", borderRadius: 10, padding: "2px 7px", fontWeight: 600, flexShrink: 0 }}>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  background: "#f0ebe4",
+                  color: "#7a6050",
+                  borderRadius: 10,
+                  padding: "2px 7px",
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
                 +{extraCount} more
               </span>
             )}
           </div>
           <p style={{ margin: 0, fontSize: "0.78rem", color: "#9a8070" }}>
-            {firstItem && <>EU {firstItem.size} · Qty {firstItem.quantity}</>}
-            {" · "}{formatDate(order.createdAt)}
+            {firstItem && (
+              <>
+                EU {firstItem.size} · Qty {firstItem.quantity}
+              </>
+            )}
+            {" · "}
+            {formatDate(order.createdAt)}
           </p>
         </div>
 
         {/* Right side */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 6,
+            flexShrink: 0,
+          }}
+        >
           <StatusBadge status={order.status} />
-          <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#1a0e06" }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.9rem",
+              fontWeight: 700,
+              color: "#1a0e06",
+            }}
+          >
             {formatPrice(order.total)}
           </p>
         </div>
@@ -209,25 +665,87 @@ function OrderCard({
 
       {/* Expanded detail */}
       {expanded && (
-        <div style={{ borderTop: "1px solid #f0ebe4", padding: "14px 18px", background: "#fdfaf7" }}>
+        <div
+          style={{
+            borderTop: "1px solid #f0ebe4",
+            padding: "14px 18px",
+            background: "#fdfaf7",
+          }}
+        >
           {/* All items */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              marginBottom: 14,
+            }}
+          >
             {order.items?.map((item, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 8, background: "#f0ebe4", overflow: "hidden", flexShrink: 0, border: "1px solid #ede6df" }}>
+              <div
+                key={idx}
+                style={{ display: "flex", alignItems: "center", gap: 12 }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    background: "#f0ebe4",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    border: "1px solid #ede6df",
+                  }}
+                >
                   {item.image ? (
-                    <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
                   ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       <Package size={16} color="#c8b8a8" />
                     </div>
                   )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: "#1a0e06" }}>{item.name}</p>
-                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#9a8070" }}>EU {item.size} · Qty {item.quantity}</p>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      color: "#1a0e06",
+                    }}
+                  >
+                    {item.name}
+                  </p>
+                  <p
+                    style={{ margin: 0, fontSize: "0.75rem", color: "#9a8070" }}
+                  >
+                    EU {item.size} · Qty {item.quantity}
+                  </p>
                 </div>
-                <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1a0e06" }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    color: "#1a0e06",
+                  }}
+                >
                   {formatPrice(item.price * item.quantity)}
                 </p>
               </div>
@@ -235,37 +753,106 @@ function OrderCard({
           </div>
 
           {/* Cost breakdown */}
-          <div style={{ borderTop: "1px solid #ede6df", paddingTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#9a8070" }}>
-              <span>Subtotal</span><span>{formatPrice(order.subtotal)}</span>
+          <div
+            style={{
+              borderTop: "1px solid #ede6df",
+              paddingTop: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "0.8rem",
+                color: "#9a8070",
+              }}
+            >
+              <span>Subtotal</span>
+              <span>{formatPrice(order.subtotal)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#9a8070" }}>
-              <span>Shipping ({order.paymentMethod ?? "COD"})</span><span>{formatPrice(order.shippingFee ?? 250)}</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "0.8rem",
+                color: "#9a8070",
+              }}
+            >
+              <span>Shipping ({order.paymentMethod ?? "COD"})</span>
+              <span>{formatPrice(order.shippingFee ?? 250)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem", fontWeight: 700, color: "#1a0e06", paddingTop: 6, borderTop: "1px solid #ede6df" }}>
-              <span>Total</span><span>{formatPrice(order.total)}</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "0.88rem",
+                fontWeight: 700,
+                color: "#1a0e06",
+                paddingTop: 6,
+                borderTop: "1px solid #ede6df",
+              }}
+            >
+              <span>Total</span>
+              <span>{formatPrice(order.total)}</span>
             </div>
           </div>
 
           {/* Cancel button — only for pending */}
           {canCancel && onCancel && (
-            <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
               <button
                 onClick={(e) => {
-  e.stopPropagation();
+                  e.stopPropagation();
 
-  const confirmCancel = window.confirm("Are you sure you want to cancel this order?");
+                  const confirmCancel = window.confirm(
+                    "Are you sure you want to cancel this order?",
+                  );
 
-  if (!confirmCancel) return;
+                  if (!confirmCancel) return;
 
-  onCancel(order.id);
-}}
+                  onCancel(order.id);
+                }}
                 disabled={cancelling}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", background: cancelling ? "#f7f3ef" : "#fff1f2", color: "#9f1239", border: "1.5px solid #fecdd3", borderRadius: 8, fontSize: "0.8rem", fontWeight: 700, cursor: cancelling ? "not-allowed" : "pointer", transition: "all 0.2s", opacity: cancelling ? 0.7 : 1 }}
-                onMouseEnter={(e) => { if (!cancelling) { e.currentTarget.style.background = "#ffe4e6"; e.currentTarget.style.borderColor = "#fb7185"; } }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#fff1f2"; e.currentTarget.style.borderColor = "#fecdd3"; }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 16px",
+                  background: cancelling ? "#f7f3ef" : "#fff1f2",
+                  color: "#9f1239",
+                  border: "1.5px solid #fecdd3",
+                  borderRadius: 8,
+                  fontSize: "0.8rem",
+                  fontWeight: 700,
+                  cursor: cancelling ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  opacity: cancelling ? 0.7 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!cancelling) {
+                    e.currentTarget.style.background = "#ffe4e6";
+                    e.currentTarget.style.borderColor = "#fb7185";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fff1f2";
+                  e.currentTarget.style.borderColor = "#fecdd3";
+                }}
               >
-                {cancelling ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                {cancelling ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <XCircle size={13} />
+                )}
                 {cancelling ? "Cancelling…" : "Cancel Order"}
               </button>
             </div>
@@ -288,20 +875,38 @@ export default function ProfilePage() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const [profile, setProfile] = useState<UserProfile>({ name: "", email: "", phone: "", shoeSize: "", street: "", city: "", province: "", postal: "" });
+  const [profile, setProfile] = useState<UserProfile>({
+    name: "",
+    email: "",
+    phone: "",
+    shoeSize: "",
+    street: "",
+    city: "",
+    province: "",
+    postal: "",
+  });
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileAlert, setProfileAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [profileAlert, setProfileAlert] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
-  const [pwAlert, setPwAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [pwAlert, setPwAlert] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   // ── Auth listener ──────────────────────────────────────────────────────────
   useEffect(() => {
     let ordersUnsub: (() => void) | undefined;
 
     const authUnsub = auth.onAuthStateChanged(async (currentUser) => {
-      if (!currentUser) { router.push("/login"); return; }
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
       setUser(currentUser);
 
       const snap = await getDoc(doc(db, "users", currentUser.uid));
@@ -318,133 +923,194 @@ export default function ProfilePage() {
           postal: data.postal ?? "",
         });
       } else {
-        setProfile((prev) => ({ ...prev, name: currentUser.displayName ?? currentUser.email?.split("@")[0] ?? "", email: currentUser.email ?? "" }));
+        setProfile((prev) => ({
+          ...prev,
+          name:
+            currentUser.displayName ?? currentUser.email?.split("@")[0] ?? "",
+          email: currentUser.email ?? "",
+        }));
       }
 
       const ordersQuery = query(
         collection(db, "orders"),
         where("userId", "==", currentUser.uid),
-        orderBy("createdAt", "desc")
+        orderBy("createdAt", "desc"),
       );
-      ordersUnsub = onSnapshot(ordersQuery,
+      ordersUnsub = onSnapshot(
+        ordersQuery,
         (snap) => {
-          setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<FirestoreOrder, "id">) })));
+          setOrders(
+            snap.docs.map((d) => ({
+              id: d.id,
+              ...(d.data() as Omit<FirestoreOrder, "id">),
+            })),
+          );
           setOrdersLoading(false);
         },
-        (err) => { console.error("Orders listener error:", err); setOrdersLoading(false); }
+        (err) => {
+          console.error("Orders listener error:", err);
+          setOrdersLoading(false);
+        },
       );
     });
 
-    return () => { authUnsub(); ordersUnsub?.(); };
+    return () => {
+      authUnsub();
+      ordersUnsub?.();
+    };
   }, [router]);
 
   // ── Cancel order ───────────────────────────────────────────────────────────
-const handleCancelOrder = async (orderId: string) => {
-  const order = orders.find((o) => o.id === orderId);
-  if (!order) return;
+  const handleCancelOrder = async (orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
 
-  if (!CANCELLABLE_STATUSES.includes(order.status?.toLowerCase())) return;
+    if (!CANCELLABLE_STATUSES.includes(order.status?.toLowerCase())) return;
 
-  setCancellingId(orderId);
+    setCancellingId(orderId);
 
-  try {
-    await runTransaction(db, async (transaction) => {
-      const orderRef = doc(db, "orders", orderId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const orderRef = doc(db, "orders", orderId);
 
-      // ✅ READ ORDER FIRST
-      const orderSnap = await transaction.get(orderRef);
-      if (!orderSnap.exists()) return;
+        // ✅ READ ORDER FIRST
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) return;
 
-      const orderData = orderSnap.data();
+        const orderData = orderSnap.data();
 
-      // Prevent double cancel
-      if (orderData.status === "cancelled") return;
+        // Prevent double cancel
+        if (orderData.status === "cancelled") return;
 
-      // ✅ GROUP ITEMS FIRST
-const grouped: Record<string, number> = {};
+        // ✅ GROUP ITEMS FIRST
+        const grouped: Record<string, number> = {};
 
-for (const item of order.items) {
-  if (!grouped[item.productId]) {
-    grouped[item.productId] = 0;
-  }
-  grouped[item.productId] += item.quantity;
-}
+        for (const item of order.items) {
+          if (!grouped[item.productId]) {
+            grouped[item.productId] = 0;
+          }
+          grouped[item.productId] += item.quantity;
+        }
 
-const productIds = Object.keys(grouped);
-const productRefs = productIds.map((id) => doc(db, "products", id));
+        const productIds = Object.keys(grouped);
+        const productRefs = productIds.map((id) => doc(db, "products", id));
 
+        // Read all products
+        const productSnaps: DocumentSnapshot[] = [];
+        for (const ref of productRefs) {
+          const snap = await transaction.get(ref);
+          productSnaps.push(snap);
+        }
 
+        // Update order
+        transaction.update(orderRef, {
+          status: "cancelled",
+          cancelledAt: new Date(),
+          cancelledBy: "user",
+        });
 
-// Read all products
-const productSnaps: DocumentSnapshot[] = [];
-for (const ref of productRefs) {
-  const snap = await transaction.get(ref);
-  productSnaps.push(snap);
-}
+        // ✅ RESTORE STOCK PROPERLY
+        for (let i = 0; i < productIds.length; i++) {
+          const snap = productSnaps[i];
+          if (!snap.exists()) continue;
 
-// Update order
-transaction.update(orderRef, {
-  status: "cancelled",
-  cancelledAt: new Date(),
-  cancelledBy: "user",
-});
+          const currentStock = snap.data().stock || 0;
+          const totalQty = grouped[productIds[i]];
 
-// ✅ RESTORE STOCK PROPERLY
-for (let i = 0; i < productIds.length; i++) {
-  const snap = productSnaps[i];
-  if (!snap.exists()) continue;
-
-  const currentStock = snap.data().stock || 0;
-  const totalQty = grouped[productIds[i]];
-
-  transaction.update(productRefs[i], {
-    stock: currentStock + totalQty,
-  });
-}
-    });
-
-  } catch (err) {
-    console.error("Failed to cancel order:", err);
-    alert("Could not cancel order. Please try again.");
-  } finally {
-    setCancellingId(null);
-  }
-};
+          transaction.update(productRefs[i], {
+            stock: currentStock + totalQty,
+          });
+        }
+      });
+    } catch (err) {
+      console.error("Failed to cancel order:", err);
+      alert("Could not cancel order. Please try again.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   // ── Save profile ───────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     if (!user) return;
-    setProfileSaving(true); setProfileAlert(null);
+    setProfileSaving(true);
+    setProfileAlert(null);
     try {
       await updateProfile(user, { displayName: profile.name });
-      await setDoc(doc(db, "users", user.uid), {
-        name: profile.name, email: profile.email, phone: profile.phone, shoeSize: profile.shoeSize,
-        street: profile.street, city: profile.city, province: profile.province, postal: profile.postal,
-      }, { merge: true });
-      setProfileAlert({ type: "success", message: "Profile saved successfully!" });
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          shoeSize: profile.shoeSize,
+          street: profile.street,
+          city: profile.city,
+          province: profile.province,
+          postal: profile.postal,
+        },
+        { merge: true },
+      );
+      setProfileAlert({
+        type: "success",
+        message: "Profile saved successfully!",
+      });
     } catch (err: unknown) {
-      setProfileAlert({ type: "error", message: err instanceof Error ? err.message : "Failed to save profile." });
-    } finally { setProfileSaving(false); }
+      setProfileAlert({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to save profile.",
+      });
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = async () => {
     if (!user || !user.email) return;
     setPwAlert(null);
-    if (!pwForm.current || !pwForm.next || !pwForm.confirm) { setPwAlert({ type: "error", message: "Please fill in all password fields." }); return; }
-    if (pwForm.next !== pwForm.confirm) { setPwAlert({ type: "error", message: "New passwords do not match." }); return; }
-    if (pwForm.next.length < 6) { setPwAlert({ type: "error", message: "Password must be at least 6 characters." }); return; }
+    if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
+      setPwAlert({
+        type: "error",
+        message: "Please fill in all password fields.",
+      });
+      return;
+    }
+    if (pwForm.next !== pwForm.confirm) {
+      setPwAlert({ type: "error", message: "New passwords do not match." });
+      return;
+    }
+    if (pwForm.next.length < 6) {
+      setPwAlert({
+        type: "error",
+        message: "Password must be at least 6 characters.",
+      });
+      return;
+    }
     setPwSaving(true);
     try {
-      const credential = EmailAuthProvider.credential(user.email, pwForm.current);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        pwForm.current,
+      );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, pwForm.next);
-      setPwAlert({ type: "success", message: "Password updated successfully!" });
+      setPwAlert({
+        type: "success",
+        message: "Password updated successfully!",
+      });
       setPwForm({ current: "", next: "", confirm: "" });
     } catch (err: unknown) {
-      const msg = err instanceof Error && err.message.includes("wrong-password") ? "Current password is incorrect." : err instanceof Error ? err.message : "Failed to update password.";
+      const msg =
+        err instanceof Error && err.message.includes("wrong-password")
+          ? "Current password is incorrect."
+          : err instanceof Error
+            ? err.message
+            : "Failed to update password.";
       setPwAlert({ type: "error", message: msg });
-    } finally { setPwSaving(false); }
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   // ── Logout ─────────────────────────────────────────────────────────────────
@@ -458,30 +1124,140 @@ for (let i = 0; i < productIds.length; i++) {
 
   if (!user) return null;
 
-  const displayName = profile.name || user.displayName || user.email?.split("@")[0] || "Guest";
-  const initials = displayName.split(/[\s._-]/).slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? "").join("");
-  const memberSince = user.metadata.creationTime ? new Date(user.metadata.creationTime).getFullYear() : "2025";
+  const displayName =
+    profile.name || user.displayName || user.email?.split("@")[0] || "Guest";
+  const initials = displayName
+    .split(/[\s._-]/)
+    .slice(0, 2)
+    .map((w: string) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  const memberSince = user.metadata.creationTime
+    ? new Date(user.metadata.creationTime).getFullYear()
+    : "2025";
   const totalSpent = orders.reduce((s, o) => s + (o.total ?? 0), 0);
 
-  const toggleOrder = (id: string) => setExpandedOrderId((prev) => (prev === id ? null : id));
+  const toggleOrder = (id: string) =>
+    setExpandedOrderId((prev) => (prev === id ? null : id));
 
   return (
-    <div className="profile-page" style={{ backgroundColor: "#e8dfd3", minHeight: "100vh" }}>
+    <div
+      className="profile-page"
+      style={{ backgroundColor: "#e8dfd3", minHeight: "100vh" }}
+    >
       <Header />
 
       {/* ── LOGOUT MODAL ─────────────────────────────────────── */}
       {showLogoutConfirm && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowLogoutConfirm(false)}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: "32px 28px", width: "100%", maxWidth: 380, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", position: "relative" }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowLogoutConfirm(false)} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", cursor: "pointer", color: "#9a8070", padding: 4 }}><X size={18} /></button>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#fdecea", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "32px 28px",
+              width: "100%",
+              maxWidth: 380,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowLogoutConfirm(false)}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9a8070",
+                padding: 4,
+              }}
+            >
+              <X size={18} />
+            </button>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "#fdecea",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
               <LogOut size={22} color="#c0392b" />
             </div>
-            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#2c2118", marginBottom: 8, marginTop: 0 }}>Sign out of Pando?</h2>
-            <p style={{ fontSize: "0.83rem", color: "#9a8070", marginBottom: 24, lineHeight: 1.5 }}>Youll need to sign back in to access your orders and account details.</p>
+            <h2
+              style={{
+                fontSize: "1rem",
+                fontWeight: 700,
+                color: "#2c2118",
+                marginBottom: 8,
+                marginTop: 0,
+              }}
+            >
+              Sign out of Pando?
+            </h2>
+            <p
+              style={{
+                fontSize: "0.83rem",
+                color: "#9a8070",
+                marginBottom: 24,
+                lineHeight: 1.5,
+              }}
+            >
+              Youll need to sign back in to access your orders and account
+              details.
+            </p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowLogoutConfirm(false)} style={{ flex: 1, padding: "10px 0", background: "none", border: "1px solid #d9cfc4", borderRadius: 7, fontSize: "0.85rem", fontWeight: 600, color: "#7a5c48", cursor: "pointer" }}>Cancel</button>
-              <button onClick={handleLogout} style={{ flex: 1, padding: "10px 0", background: "#c0392b", border: "none", borderRadius: 7, fontSize: "0.85rem", fontWeight: 600, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "1px solid #d9cfc4",
+                  borderRadius: 7,
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "#7a5c48",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "#c0392b",
+                  border: "none",
+                  borderRadius: 7,
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
                 <LogOut size={13} /> Logout
               </button>
             </div>
@@ -503,81 +1279,147 @@ for (let i = 0; i < productIds.length; i++) {
             <div className="profile-stat-label">Orders</div>
           </div>
           <div className="profile-stat">
-            <div className="profile-stat-value">₱{(totalSpent / 1000).toFixed(1)}k</div>
+            <div className="profile-stat-value">
+              ₱{(totalSpent / 1000).toFixed(1)}k
+            </div>
             <div className="profile-stat-label">Spent</div>
           </div>
         </div>
       </div>
 
       {/* ── TAB BAR ──────────────────────────────────────────── */}
-      <div className="profile-tabbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        className="profile-tabbar"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <div style={{ display: "flex" }}>
           {TABS.map((tab) => (
-            <button key={tab} className={`profile-tab${activeTab === tab ? " profile-tab--active" : ""}`} onClick={() => setActiveTab(tab)}>{tab}</button>
+            <button
+              key={tab}
+              className={`profile-tab${activeTab === tab ? " profile-tab--active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
           ))}
         </div>
         <button
-  onClick={() => setShowLogoutConfirm(true)}
-  style={{
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "8px 16px",
-    marginRight: 4,
-    background: "transparent",
-    color: "#e8dfd3",
-    border: "1px solid transparent",
-    borderRadius: 6,
-    fontSize: "0.9rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.2s ease"
-  }}
-  onMouseEnter={(e) => {
-    const b = e.currentTarget;
-    b.style.background = "#e8dfd3";
-    b.style.color = "#3a2414";
-    b.style.borderColor = "#e8dfd3";
-  }}
-  onMouseLeave={(e) => {
-    const b = e.currentTarget;
-    b.style.background = "transparent";
-    b.style.color = "#e8dfd3";
-    b.style.borderColor = "transparent";
-  }}
->
-  <LogOut size={14} />
-  LOGOUT
-</button>
+          onClick={() => setShowLogoutConfirm(true)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            marginRight: 4,
+            background: "transparent",
+            color: "#e8dfd3",
+            border: "1px solid transparent",
+            borderRadius: 6,
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            const b = e.currentTarget;
+            b.style.background = "#e8dfd3";
+            b.style.color = "#3a2414";
+            b.style.borderColor = "#e8dfd3";
+          }}
+          onMouseLeave={(e) => {
+            const b = e.currentTarget;
+            b.style.background = "transparent";
+            b.style.color = "#e8dfd3";
+            b.style.borderColor = "transparent";
+          }}
+        >
+          <LogOut size={14} />
+          LOGOUT
+        </button>
       </div>
 
       {/* ── CONTENT ──────────────────────────────────────────── */}
       <div className="profile-content">
-
         {/* ════ OVERVIEW ════ */}
         {activeTab === "Overview" && (
           <>
             <div className="profile-grid" style={{ marginBottom: 20 }}>
               <div className="profile-card profile-card--full">
                 <div className="profile-card-header">
-                  <span className="profile-card-title">Personal Information</span>
-                  <button className="btn profile-btn-sm" onClick={() => setActiveTab("Settings")}>
-                    <Edit2 size={12} style={{ display: "inline", marginRight: 6 }} />Edit
+                  <span className="profile-card-title">
+                    Personal Information
+                  </span>
+                  <button
+                    className="btn profile-btn-sm"
+                    onClick={() => setActiveTab("Settings")}
+                  >
+                    <Edit2
+                      size={12}
+                      style={{ display: "inline", marginRight: 6 }}
+                    />
+                    Edit
                   </button>
                 </div>
                 <div className="profile-info-grid">
-                  <div><p className="profile-info-label">Full Name</p><p className="profile-info-value">{profile.name || "—"}</p></div>
-                  <div><p className="profile-info-label">Email</p><p className="profile-info-value">{user.email}</p></div>
-                  <div><p className="profile-info-label">Phone</p><p className="profile-info-value">{profile.phone || "—"}</p></div>
-                  <div><p className="profile-info-label">Member Since</p><p className="profile-info-value">{memberSince}</p></div>
-                  <div><p className="profile-info-label">Shoe Size (EU)</p><p className="profile-info-value">{profile.shoeSize || "—"}</p></div>
-                  <div><p className="profile-info-label">Account Status</p><p className="profile-info-value" style={{ color: "#4a6a2a" }}>Active</p></div>
+                  <div>
+                    <p className="profile-info-label">Full Name</p>
+                    <p className="profile-info-value">{profile.name || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="profile-info-label">Email</p>
+                    <p className="profile-info-value">{user.email}</p>
+                  </div>
+                  <div>
+                    <p className="profile-info-label">Phone</p>
+                    <p className="profile-info-value">{profile.phone || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="profile-info-label">Member Since</p>
+                    <p className="profile-info-value">{memberSince}</p>
+                  </div>
+                  <div>
+                    <p className="profile-info-label">Shoe Size (EU)</p>
+                    <p className="profile-info-value">
+                      {profile.shoeSize || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="profile-info-label">Account Status</p>
+                    <p
+                      className="profile-info-value"
+                      style={{ color: "#4a6a2a" }}
+                    >
+                      Active
+                    </p>
+                  </div>
                 </div>
                 {(profile.street || profile.city) && (
-                  <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid #ede6df" }}>
-                    <p className="profile-info-label">Default Shipping Address</p>
-                    <p className="profile-info-value" style={{ lineHeight: 1.6 }}>
-                      {[profile.street, profile.city, profile.province, profile.postal].filter(Boolean).join(", ")}
+                  <div
+                    style={{
+                      marginTop: 20,
+                      paddingTop: 20,
+                      borderTop: "1px solid #ede6df",
+                    }}
+                  >
+                    <p className="profile-info-label">
+                      Default Shipping Address
+                    </p>
+                    <p
+                      className="profile-info-value"
+                      style={{ lineHeight: 1.6 }}
+                    >
+                      {[
+                        profile.street,
+                        profile.city,
+                        profile.province,
+                        profile.postal,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
                     </p>
                   </div>
                 )}
@@ -588,16 +1430,38 @@ for (let i = 0; i < productIds.length; i++) {
             <div className="profile-card">
               <div className="profile-card-header">
                 <span className="profile-card-title">Recent Orders</span>
-                <button className="btn profile-btn-sm" onClick={() => setActiveTab("Orders")}>View All</button>
+                <button
+                  className="btn profile-btn-sm"
+                  onClick={() => setActiveTab("Orders")}
+                >
+                  View All
+                </button>
               </div>
               {ordersLoading ? (
-                <p style={{ fontSize: "0.85rem", color: "#9a8070", padding: "12px 0", display: "flex", alignItems: "center", gap: 8 }}>
+                <p
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#9a8070",
+                    padding: "12px 0",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
                   <Loader2 size={14} className="animate-spin" /> Loading orders…
                 </p>
               ) : orders.length === 0 ? (
                 <div style={{ padding: "32px 0", textAlign: "center" }}>
-                  <ShoppingBag size={36} color="#c8b8a8" style={{ marginBottom: 10 }} />
-                  <p style={{ fontSize: "0.85rem", color: "#9a8070", margin: 0 }}>No orders yet.</p>
+                  <ShoppingBag
+                    size={36}
+                    color="#c8b8a8"
+                    style={{ marginBottom: 10 }}
+                  />
+                  <p
+                    style={{ fontSize: "0.85rem", color: "#9a8070", margin: 0 }}
+                  >
+                    No orders yet.
+                  </p>
                 </div>
               ) : (
                 <div style={{ marginTop: 8 }}>
@@ -623,19 +1487,45 @@ for (let i = 0; i < productIds.length; i++) {
             <div className="profile-card-header">
               <span className="profile-card-title">Order History</span>
               <span style={{ fontSize: "0.75rem", color: "#9a8070" }}>
-                {ordersLoading ? "Loading…" : `${orders.length} order${orders.length !== 1 ? "s" : ""}`}
+                {ordersLoading
+                  ? "Loading…"
+                  : `${orders.length} order${orders.length !== 1 ? "s" : ""}`}
               </span>
             </div>
 
             {ordersLoading ? (
-              <p style={{ fontSize: "0.85rem", color: "#9a8070", padding: "12px 0", display: "flex", alignItems: "center", gap: 8 }}>
+              <p
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#9a8070",
+                  padding: "12px 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
                 <Loader2 size={14} className="animate-spin" /> Loading orders…
               </p>
             ) : orders.length === 0 ? (
               <div style={{ padding: "48px 0", textAlign: "center" }}>
-                <ShoppingBag size={48} color="#c8b8a8" style={{ marginBottom: 14 }} />
-                <p style={{ fontSize: "0.95rem", fontWeight: 600, color: "#7a6050", margin: "0 0 6px" }}>No orders yet</p>
-                <p style={{ fontSize: "0.83rem", color: "#9a8070", margin: 0 }}>When you place an order, it will appear here.</p>
+                <ShoppingBag
+                  size={48}
+                  color="#c8b8a8"
+                  style={{ marginBottom: 14 }}
+                />
+                <p
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    color: "#7a6050",
+                    margin: "0 0 6px",
+                  }}
+                >
+                  No orders yet
+                </p>
+                <p style={{ fontSize: "0.83rem", color: "#9a8070", margin: 0 }}>
+                  When you place an order, it will appear here.
+                </p>
               </div>
             ) : (
               <div style={{ marginTop: 8 }}>
@@ -658,33 +1548,148 @@ for (let i = 0; i < productIds.length; i++) {
         {activeTab === "Settings" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div className="profile-card">
-              <div className="profile-card-header"><span className="profile-card-title">Account Details</span></div>
-              {profileAlert && <Alert type={profileAlert.type} message={profileAlert.message} />}
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div className="profile-card-header">
+                <span className="profile-card-title">Account Details</span>
+              </div>
+              {profileAlert && (
+                <Alert
+                  type={profileAlert.type}
+                  message={profileAlert.message}
+                />
+              )}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+              >
                 <div className="profile-form-row">
-                  <FormInput label="Full Name" value={profile.name} onChange={(v) => setProfile((p) => ({ ...p, name: v }))} placeholder="Your full name" />
+                  <FormInput
+                    label="Full Name"
+                    value={profile.name}
+                    onChange={(v) => setProfile((p) => ({ ...p, name: v }))}
+                    placeholder="Your full name"
+                  />
                   <FormInput label="Email" value={profile.email} readOnly />
                 </div>
                 <div className="profile-form-row">
-                  <FormInput label="Phone Number" value={profile.phone} onChange={(v) => setProfile((p) => ({ ...p, phone: v }))} placeholder="+63 900 000 0000" />
-                  <FormInput label="Shoe Size (EU)" value={profile.shoeSize} onChange={(v) => setProfile((p) => ({ ...p, shoeSize: v }))} placeholder="e.g. 43" />
+                  <FormInput
+                    label="Phone Number"
+                    value={profile.phone}
+                    onChange={(v) => setProfile((p) => ({ ...p, phone: v }))}
+                    placeholder="+63 900 000 0000"
+                  />
+                  <FormInput
+                    label="Shoe Size (EU)"
+                    value={profile.shoeSize}
+                    onChange={(v) => setProfile((p) => ({ ...p, shoeSize: v }))}
+                    placeholder="e.g. 43"
+                  />
                 </div>
                 <div style={{ paddingTop: 8, borderTop: "1px solid #ede6df" }}>
-                  <p style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: "#9a8070", marginBottom: 16, marginTop: 0 }}>Default Shipping Address</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <FormInput label="Street Address" value={profile.street} onChange={(v) => setProfile((p) => ({ ...p, street: v }))} placeholder="House No., Street Name, Barangay" />
+  <p
+    style={{
+      fontSize: "0.68rem",
+      fontWeight: 700,
+      letterSpacing: "2px",
+      textTransform: "uppercase",
+      color: "#9a8070",
+      marginBottom: 16,
+      marginTop: 0,
+    }}
+  >
+    Default Shipping Address
+  </p>
+
+  {/* ── Quick location fill ── */}
+  <div style={{
+    background: "#f0ebe4", borderRadius: 12, padding: "16px 18px",
+    marginBottom: 20, display: "flex", flexDirection: "column", gap: 14,
+  }}>
+    <p style={{
+      fontSize: "0.68rem", fontWeight: 700, letterSpacing: "2px",
+      textTransform: "uppercase", color: "#9a8070", margin: 0,
+    }}>
+      Quick Location Fill
+    </p>
+    <ProfileGeolocationButton
+      onDetected={(city, province, street, postal) => {
+        setProfile((p) => ({
+          ...p,
+          city: city || p.city,
+          province: province || p.province,
+          street: street || p.street,
+          postal: postal || p.postal,
+        }));
+      }}
+    />
+    <ProfileAddressSearch
+      onSelect={(city, province, street, postal) => {
+        setProfile((p) => ({
+          ...p,
+          city: city || p.city,
+          province: province || p.province,
+          street: street || p.street,
+          postal: postal || p.postal,
+        }));
+      }}
+    />
+  </div>
+
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 16,
+    }}
+  >
+                    <FormInput
+                      label="Street Address"
+                      value={profile.street}
+                      onChange={(v) => setProfile((p) => ({ ...p, street: v }))}
+                      placeholder="House No., Street Name, Barangay"
+                    />
                     <div className="profile-form-row">
-                      <FormInput label="City" value={profile.city} onChange={(v) => setProfile((p) => ({ ...p, city: v }))} placeholder="City" />
-                      <FormInput label="Province" value={profile.province} onChange={(v) => setProfile((p) => ({ ...p, province: v }))} placeholder="Province" />
+                      <FormInput
+                        label="City"
+                        value={profile.city}
+                        onChange={(v) => setProfile((p) => ({ ...p, city: v }))}
+                        placeholder="City"
+                      />
+                      <FormInput
+                        label="Province"
+                        value={profile.province}
+                        onChange={(v) =>
+                          setProfile((p) => ({ ...p, province: v }))
+                        }
+                        placeholder="Province"
+                      />
                     </div>
                     <div style={{ maxWidth: "calc(50% - 8px)" }}>
-                      <FormInput label="Postal Code" value={profile.postal} onChange={(v) => setProfile((p) => ({ ...p, postal: v }))} placeholder="####" />
+                      <FormInput
+                        label="Postal Code"
+                        value={profile.postal}
+                        onChange={(v) =>
+                          setProfile((p) => ({ ...p, postal: v }))
+                        }
+                        placeholder="####"
+                      />
                     </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={handleSaveProfile} disabled={profileSaving} style={{ display: "flex", alignItems: "center", gap: 8, opacity: profileSaving ? 0.7 : 1, cursor: profileSaving ? "not-allowed" : "pointer" }}>
-                    {profileSaving && <Loader2 size={13} className="animate-spin" />}
+                  <button
+                    className="btn"
+                    onClick={handleSaveProfile}
+                    disabled={profileSaving}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      opacity: profileSaving ? 0.7 : 1,
+                      cursor: profileSaving ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {profileSaving && (
+                      <Loader2 size={13} className="animate-spin" />
+                    )}
                     {profileSaving ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
@@ -692,16 +1697,51 @@ for (let i = 0; i < productIds.length; i++) {
             </div>
 
             <div className="profile-card">
-              <div className="profile-card-header"><span className="profile-card-title">Change Password</span></div>
-              {pwAlert && <Alert type={pwAlert.type} message={pwAlert.message} />}
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <FormInput label="Current Password" value={pwForm.current} onChange={(v) => setPwForm((p) => ({ ...p, current: v }))} type="password" placeholder="••••••••" />
+              <div className="profile-card-header">
+                <span className="profile-card-title">Change Password</span>
+              </div>
+              {pwAlert && (
+                <Alert type={pwAlert.type} message={pwAlert.message} />
+              )}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+              >
+                <FormInput
+                  label="Current Password"
+                  value={pwForm.current}
+                  onChange={(v) => setPwForm((p) => ({ ...p, current: v }))}
+                  type="password"
+                  placeholder="••••••••"
+                />
                 <div className="profile-form-row">
-                  <FormInput label="New Password" value={pwForm.next} onChange={(v) => setPwForm((p) => ({ ...p, next: v }))} type="password" placeholder="••••••••" />
-                  <FormInput label="Confirm New Password" value={pwForm.confirm} onChange={(v) => setPwForm((p) => ({ ...p, confirm: v }))} type="password" placeholder="••••••••" />
+                  <FormInput
+                    label="New Password"
+                    value={pwForm.next}
+                    onChange={(v) => setPwForm((p) => ({ ...p, next: v }))}
+                    type="password"
+                    placeholder="••••••••"
+                  />
+                  <FormInput
+                    label="Confirm New Password"
+                    value={pwForm.confirm}
+                    onChange={(v) => setPwForm((p) => ({ ...p, confirm: v }))}
+                    type="password"
+                    placeholder="••••••••"
+                  />
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={handleChangePassword} disabled={pwSaving} style={{ display: "flex", alignItems: "center", gap: 8, opacity: pwSaving ? 0.7 : 1, cursor: pwSaving ? "not-allowed" : "pointer" }}>
+                  <button
+                    className="btn"
+                    onClick={handleChangePassword}
+                    disabled={pwSaving}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      opacity: pwSaving ? 0.7 : 1,
+                      cursor: pwSaving ? "not-allowed" : "pointer",
+                    }}
+                  >
                     {pwSaving && <Loader2 size={13} className="animate-spin" />}
                     {pwSaving ? "Updating…" : "Update Password"}
                   </button>

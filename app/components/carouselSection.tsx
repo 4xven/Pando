@@ -61,12 +61,18 @@ export default function CarouselSection() {
 
   return (
     <section style={{ padding: "60px 20px", background: "#E8DFD3" }}>
-      
       {/* TITLE */}
       <div style={{ maxWidth: "1100px", margin: "0 auto 20px" }}>
-        <h2 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#3C2415" }}>
-          Featured Collection
-        </h2>
+        <h2
+  style={{
+    fontSize: "1.8rem",
+    fontWeight: 700,
+    color: "#3C2415",
+    fontFamily: "'Cormorant Garamond', serif", // 👈 display font
+  }}
+>
+  Featured Collection
+</h2>
       </div>
 
       {/* SCROLL */}
@@ -108,7 +114,13 @@ export default function CarouselSection() {
 
             {/* CONTENT */}
             <div style={{ padding: "12px" }}>
-              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#3C2415" }}>
+              <h3
+                style={{
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  color: "#3C2415",
+                }}
+              >
                 {product.name}
               </h3>
 
@@ -116,7 +128,13 @@ export default function CarouselSection() {
                 {product.category}
               </p>
 
-              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#A0522D" }}>
+              <span
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  color: "#A0522D",
+                }}
+              >
                 {formatPrice(product.price)}
               </span>
             </div>

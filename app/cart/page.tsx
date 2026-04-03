@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, ArrowLeft } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import Header from "../components/shared/header";
 import Footer from "../components/shared/footer";
 import { db, auth } from "../lib/firebase";
@@ -56,14 +56,17 @@ export default function CartPage() {
       if (unsubProducts) unsubProducts();
       unsubProducts = onSnapshot(collection(db, "products"), (snapshot) => {
         const productsMap = new Map(
-          snapshot.docs.map((doc) => [doc.id, doc.data()])
+          snapshot.docs.map((doc) => [doc.id, doc.data()]),
         );
         setCart((prev) =>
           prev.map((item) => {
             const latest = productsMap.get(item.product.id);
             if (!latest) return item;
-            return { ...item, product: { ...item.product, stock: latest.stock } };
-          })
+            return {
+              ...item,
+              product: { ...item.product, stock: latest.stock },
+            };
+          }),
         );
       });
     });
@@ -96,17 +99,18 @@ export default function CartPage() {
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   const selectedItems = cart.filter((i) =>
-    selected.has(itemKey(i.product.id, i.size))
+    selected.has(itemKey(i.product.id, i.size)),
   );
   const summaryItems = selected.size > 0 ? selectedItems : cart;
   const summaryCount = summaryItems.reduce((sum, i) => sum + i.quantity, 0);
   const summaryTotal = summaryItems.reduce(
     (sum, i) => sum + i.product.price * i.quantity,
-    0
+    0,
   );
 
   const allKeys = cart.map((i) => itemKey(i.product.id, i.size));
-  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
+  const allSelected =
+    allKeys.length > 0 && allKeys.every((k) => selected.has(k));
   const someSelected = selected.size > 0;
 
   const toggleSelectAll = () => {
@@ -125,7 +129,7 @@ export default function CartPage() {
   // ─── Cart operations ──────────────────────────────────────────────────────
   const removeFromCart = (productId: string, size: number) => {
     setCart((prev) =>
-      prev.filter((i) => !(i.product.id === productId && i.size === size))
+      prev.filter((i) => !(i.product.id === productId && i.size === size)),
     );
     setSelected((prev) => {
       const next = new Set(prev);
@@ -139,13 +143,17 @@ export default function CartPage() {
     if (!someSelected) return;
     if (!confirm(`Remove ${selected.size} selected item(s) from cart?`)) return;
     setCart((prev) =>
-      prev.filter((i) => !selected.has(itemKey(i.product.id, i.size)))
+      prev.filter((i) => !selected.has(itemKey(i.product.id, i.size))),
     );
     setSelected(new Set());
     flash();
   };
 
-  const updateQuantity = (productId: string, size: number, newQuantity: number) => {
+  const updateQuantity = (
+    productId: string,
+    size: number,
+    newQuantity: number,
+  ) => {
     setCart((prev) =>
       prev.map((i) => {
         if (i.product.id === productId && i.size === size) {
@@ -158,7 +166,7 @@ export default function CartPage() {
           return { ...i, quantity: newQuantity };
         }
         return i;
-      })
+      }),
     );
   };
 
@@ -169,7 +177,7 @@ export default function CartPage() {
     const itemsForCheckout = someSelected ? selectedItems : cart;
     localStorage.setItem(
       getCheckoutKey(currentUid),
-      JSON.stringify(itemsForCheckout)
+      JSON.stringify(itemsForCheckout),
     );
     router.push("/checkout");
   };
@@ -182,32 +190,14 @@ export default function CartPage() {
         style={{
           minHeight: "100vh",
           background: "#E8DFD3",
-          padding: "140px 16px 60px",
+          padding: "40px 16px 60px",
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
-        <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           {/* Page heading */}
           <div style={{ marginBottom: "40px" }}>
-            <Link
-              href="/product"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                color: "#3C2415",
-                textDecoration: "none",
-                fontSize: "0.9rem",
-                fontWeight: 500,
-                marginBottom: "20px",
-                transition: "opacity 0.2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              <ArrowLeft size={18} />
-              Continue Shopping
-            </Link>
+            
             <h1
               style={{
                 fontSize: "2.8rem",
@@ -269,8 +259,16 @@ export default function CartPage() {
               >
                 Your cart is empty
               </h2>
-              <p style={{ color: "#9A8070", fontSize: "0.9rem", maxWidth: "400px", margin: "0 auto 28px" }}>
-                Discover our collection of premium Marikina shoes and add your favorites to the cart.
+              <p
+                style={{
+                  color: "#9A8070",
+                  fontSize: "0.9rem",
+                  maxWidth: "400px",
+                  margin: "0 auto 28px",
+                }}
+              >
+                Discover our collection of premium Marikina shoes and add your
+                favorites to the cart.
               </p>
               <Link
                 href="/product"
@@ -285,14 +283,24 @@ export default function CartPage() {
                   fontSize: "0.9rem",
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#5a3a21")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#3C2415")}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#5a3a21")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#3C2415")
+                }
               >
                 Shop Now
               </Link>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 340px",
+                gap: "24px",
+              }}
+            >
               {/* LEFT — cart items */}
               <div
                 style={{
@@ -330,7 +338,12 @@ export default function CartPage() {
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      style={{ width: "17px", height: "17px", cursor: "pointer", accentColor: "#3C2415" }}
+                      style={{
+                        width: "17px",
+                        height: "17px",
+                        cursor: "pointer",
+                        accentColor: "#3C2415",
+                      }}
                     />
                     Select All
                   </label>
@@ -357,8 +370,12 @@ export default function CartPage() {
                         gap: "6px",
                         transition: "background 0.2s",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#fef2f2")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
                     >
                       <Trash2 size={14} />
                       Delete Selected
@@ -378,19 +395,36 @@ export default function CartPage() {
                         gap: "16px",
                         padding: "12px",
                         marginBottom: idx < cart.length - 1 ? "8px" : "0",
-                        borderBottom: idx < cart.length - 1 ? "1px solid #ede6df" : "none",
+                        borderBottom:
+                          idx < cart.length - 1 ? "1px solid #ede6df" : "none",
                         borderRadius: "12px",
-                        background: isSelected ? "rgba(160,82,45,0.06)" : "transparent",
+                        background: isSelected
+                          ? "rgba(160,82,45,0.06)"
+                          : "transparent",
                         transition: "background 0.2s",
                       }}
                     >
                       {/* Checkbox */}
-                      <div style={{ display: "flex", alignItems: "flex-start", paddingTop: "4px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          paddingTop: "4px",
+                        }}
+                      >
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => toggleSelect(item.product.id, item.size)}
-                          style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#3C2415", marginTop: "2px" }}
+                          onChange={() =>
+                            toggleSelect(item.product.id, item.size)
+                          }
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            cursor: "pointer",
+                            accentColor: "#3C2415",
+                            marginTop: "2px",
+                          }}
                         />
                       </div>
 
@@ -413,30 +447,71 @@ export default function CartPage() {
                           <img
                             src={item.product.image}
                             alt={item.product.name}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
                           />
                         ) : (
-                          <span style={{ fontSize: "2rem", opacity: 0.3 }}>👟</span>
+                          <span style={{ fontSize: "2rem", opacity: 0.3 }}>
+                            👟
+                          </span>
                         )}
                       </div>
 
                       {/* Details */}
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: "8px",
+                          }}
+                        >
                           <div>
-                            <h3 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 700, color: "#3C2415" }}>
+                            <h3
+                              style={{
+                                margin: "0 0 4px 0",
+                                fontSize: "1rem",
+                                fontWeight: 700,
+                                color: "#3C2415",
+                              }}
+                            >
                               {item.product.name}
                             </h3>
-                            <p style={{ margin: 0, fontSize: "0.8rem", color: "#9A8070" }}>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "0.8rem",
+                                color: "#9A8070",
+                              }}
+                            >
                               EU {item.size} · {item.product.category}
                             </p>
                           </div>
-                          <span style={{ fontSize: "1.1rem", fontWeight: 700, color: "#A0522D", whiteSpace: "nowrap", marginLeft: "12px" }}>
+                          <span
+                            style={{
+                              fontSize: "1.1rem",
+                              fontWeight: 700,
+                              color: "#A0522D",
+                              whiteSpace: "nowrap",
+                              marginLeft: "12px",
+                            }}
+                          >
                             {formatPrice(item.product.price * item.quantity)}
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "12px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            marginTop: "12px",
+                          }}
+                        >
                           <div
                             style={{
                               display: "flex",
@@ -448,24 +523,62 @@ export default function CartPage() {
                             }}
                           >
                             <button
-                              onClick={() => updateQuantity(item.product.id, item.size, item.quantity - 1)}
-                              style={{ background: "none", border: "none", color: "#9A8070", cursor: "pointer", fontSize: "1rem", padding: "4px 8px", transition: "color 0.2s" }}
-                              onMouseEnter={(e) => (e.currentTarget.style.color = "#3C2415")}
-                              onMouseLeave={(e) => (e.currentTarget.style.color = "#9A8070")}
+                              onClick={() =>
+                                updateQuantity(
+                                  item.product.id,
+                                  item.size,
+                                  item.quantity - 1,
+                                )
+                              }
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "#9A8070",
+                                cursor: "pointer",
+                                fontSize: "1rem",
+                                padding: "4px 8px",
+                                transition: "color 0.2s",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.color = "#3C2415")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.color = "#9A8070")
+                              }
                             >
                               −
                             </button>
-                            <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#3C2415", minWidth: "24px", textAlign: "center" }}>
+                            <span
+                              style={{
+                                fontSize: "0.9rem",
+                                fontWeight: 600,
+                                color: "#3C2415",
+                                minWidth: "24px",
+                                textAlign: "center",
+                              }}
+                            >
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.product.id, item.size, item.quantity + 1)}
+                              onClick={() =>
+                                updateQuantity(
+                                  item.product.id,
+                                  item.size,
+                                  item.quantity + 1,
+                                )
+                              }
                               disabled={item.quantity >= item.product.stock}
                               style={{
                                 background: "none",
                                 border: "none",
-                                color: item.quantity >= item.product.stock ? "#ccc" : "#9A8070",
-                                cursor: item.quantity >= item.product.stock ? "not-allowed" : "pointer",
+                                color:
+                                  item.quantity >= item.product.stock
+                                    ? "#ccc"
+                                    : "#9A8070",
+                                cursor:
+                                  item.quantity >= item.product.stock
+                                    ? "not-allowed"
+                                    : "pointer",
                                 fontSize: "1rem",
                                 padding: "4px 8px",
                               }}
@@ -475,10 +588,24 @@ export default function CartPage() {
                           </div>
 
                           <button
-                            onClick={() => removeFromCart(item.product.id, item.size)}
-                            style={{ background: "none", border: "none", color: "#c4b9af", cursor: "pointer", padding: "4px 8px", transition: "color 0.2s", marginLeft: "auto" }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#b91c1c")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#c4b9af")}
+                            onClick={() =>
+                              removeFromCart(item.product.id, item.size)
+                            }
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#c4b9af",
+                              cursor: "pointer",
+                              padding: "4px 8px",
+                              transition: "color 0.2s",
+                              marginLeft: "auto",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.color = "#b91c1c")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.color = "#c4b9af")
+                            }
                             title="Remove from cart"
                           >
                             <Trash2 size={18} />
@@ -502,25 +629,71 @@ export default function CartPage() {
                     top: "100px",
                   }}
                 >
-                  <h3 style={{ margin: "0 0 4px 0", fontSize: "0.95rem", fontWeight: 700, textTransform: "uppercase", color: "#3C2415", letterSpacing: "0.8px" }}>
+                  <h3
+                    style={{
+                      margin: "0 0 4px 0",
+                      fontSize: "0.95rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      color: "#3C2415",
+                      letterSpacing: "0.8px",
+                    }}
+                  >
                     Order Summary
                   </h3>
-                  <p style={{ fontSize: "0.78rem", color: someSelected ? "#A0522D" : "#9A8070", fontWeight: someSelected ? 500 : 400, margin: "0 0 16px" }}>
+                  <p
+                    style={{
+                      fontSize: "0.78rem",
+                      color: someSelected ? "#A0522D" : "#9A8070",
+                      fontWeight: someSelected ? 500 : 400,
+                      margin: "0 0 16px",
+                    }}
+                  >
                     {someSelected
                       ? `Total for ${selected.size} selected item${selected.size !== 1 ? "s" : ""}`
                       : "Select items to checkout a specific order"}
                   </p>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.85rem",
+                        color: "#5A3D2B",
+                      }}
+                    >
                       <span>Subtotal ({summaryCount} items)</span>
                       <span>{formatPrice(summaryTotal)}</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.85rem",
+                        color: "#5A3D2B",
+                      }}
+                    >
                       <span>Shipping</span>
-                      <span style={{ color: "#606C38", fontWeight: 600 }}>Free</span>
+                      <span style={{ color: "#606C38", fontWeight: 600 }}>
+                        Free
+                      </span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#5A3D2B" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.85rem",
+                        color: "#5A3D2B",
+                      }}
+                    >
                       <span>Tax</span>
                       <span>Calculated at checkout</span>
                     </div>
@@ -558,8 +731,12 @@ export default function CartPage() {
                       transition: "background 0.2s",
                       marginBottom: "12px",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#5a3a21")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#3C2415")}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#5a3a21")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "#3C2415")
+                    }
                   >
                     {someSelected
                       ? `Checkout (${selected.size} item${selected.size !== 1 ? "s" : ""})`

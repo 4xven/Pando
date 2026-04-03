@@ -32,7 +32,7 @@ export default function CollectionSection({
         <p>{description}</p>
         <div className="divider" />
 
-        <button className="btn">Check Now</button>
+       
       </div>
     </section>
   );
