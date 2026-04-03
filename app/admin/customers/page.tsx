@@ -57,7 +57,7 @@ export default function CustomersPage() {
   // ── Derived stats ────────────────────────────────────────────────────────────
   const totalUsers   = customers.filter((c) => c.role === "user").length;
   const totalAdmins  = customers.filter((c) => c.role === "admin").length;
-  const totalRevenue = customers.reduce((s, c) => s + (c.totalSpent ?? 0), 0);
+ 
 
   const STAT_CARDS = [
     {
@@ -128,7 +128,7 @@ export default function CustomersPage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "87vh",
         background: "#f3efe9",
         padding: "28px 32px 60px",
         fontFamily: "Georgia, serif",

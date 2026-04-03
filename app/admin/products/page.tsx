@@ -29,7 +29,7 @@ interface Product {
 
 const EMPTY_FORM = {
   name: "",
-  category: "Formal",
+  category: "Men",
   price: "",
   stock: "",
   imageUrl: "",
@@ -43,7 +43,9 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Low Stock" | "Out of Stock">("All");
+  const [statusFilter, setStatusFilter] = useState<
+    "All" | "Low Stock" | "Out of Stock"
+  >("All");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,14 +92,18 @@ export default function ProductsPage() {
       value: lowStockCount,
       icon: <AlertTriangle size={20} color="#a07840" />,
       active: statusFilter === "Low Stock",
-      onClick: () => setStatusFilter(statusFilter === "Low Stock" ? "All" : "Low Stock"),
+      onClick: () =>
+        setStatusFilter(statusFilter === "Low Stock" ? "All" : "Low Stock"),
     },
     {
       label: "Out of Stock",
       value: outOfStock,
       icon: <XCircle size={20} color="#a07840" />,
       active: statusFilter === "Out of Stock",
-      onClick: () => setStatusFilter(statusFilter === "Out of Stock" ? "All" : "Out of Stock"),
+      onClick: () =>
+        setStatusFilter(
+          statusFilter === "Out of Stock" ? "All" : "Out of Stock",
+        ),
     },
   ];
 
@@ -119,7 +125,7 @@ export default function ProductsPage() {
     setSelectedSizes((prev) =>
       prev.includes(size)
         ? prev.filter((s) => s !== size)
-        : [...prev, size].sort((a, b) => a - b)
+        : [...prev, size].sort((a, b) => a - b),
     );
   };
 
@@ -234,23 +240,28 @@ export default function ProductsPage() {
 
   // ─── Filter ───────────────────────────────────────────────────────────────
   const filteredProducts = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = p.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchCategory =
       selectedCategory === "All Categories" ||
       p.category?.toLowerCase() === selectedCategory.toLowerCase();
-    const matchStatus =
-      statusFilter === "All" || p.status === statusFilter;
+    const matchStatus = statusFilter === "All" || p.status === statusFilter;
     return matchSearch && matchCategory && matchStatus;
   });
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-8 bg-[#f5f1ed] min-h-screen font-sans">
+    <div className="h-screen flex flex-col p-8 bg-[#f5f1ed] font-sans overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-[#2b1a0e]">Product Management</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your shoe inventory</p>
+          <h1 className="text-3xl font-bold text-[#2b1a0e]">
+            Product Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Manage your shoe inventory
+          </p>
         </div>
         <button
           onClick={openAddModal}
@@ -296,7 +307,8 @@ export default function ProductsPage() {
             }}
             onMouseLeave={(e) => {
               if (!card.active)
-                e.currentTarget.style.boxShadow = "0 1px 6px rgba(60,36,20,0.06)";
+                e.currentTarget.style.boxShadow =
+                  "0 1px 6px rgba(60,36,20,0.06)";
             }}
           >
             <div>
@@ -343,13 +355,24 @@ export default function ProductsPage() {
       </div>
 
       {/* Table Card */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="bg-white rounded-2xl shadow-sm p-6 flex-1 flex flex-col overflow-hidden">
         {/* Search + Filter */}
         <div className="flex gap-3 mb-6">
           <div className="flex-1 relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+                />
               </svg>
             </span>
             <input
@@ -369,10 +392,10 @@ export default function ProductsPage() {
               <option>All Categories</option>
               <option>Men</option>
               <option>Women</option>
-              <option>Formal</option>
-              <option>Casual</option>
             </select>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▾</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">
+              ▾
+            </span>
           </div>
 
           {/* Active status filter badge */}
@@ -391,79 +414,121 @@ export default function ProductsPage() {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center text-gray-400 text-sm">Loading products…</div>
+          <div className="py-16 text-center text-gray-400 text-sm">
+            Loading products…
+          </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-gray-400 text-xs tracking-widest uppercase">
-                <th className="pb-3 pr-4 font-semibold">Image</th>
-                <th className="pb-3 pr-4 font-semibold">Name</th>
-                <th className="pb-3 pr-4 font-semibold">Category</th>
-                <th className="pb-3 pr-4 font-semibold">Price</th>
-                <th className="pb-3 pr-4 font-semibold">Stock</th>
-                <th className="pb-3 pr-4 font-semibold">Sizes</th>
-                <th className="pb-3 pr-4 font-semibold">Status</th>
-                <th className="pb-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((p) => (
-                <tr key={p.id} className="border-t border-gray-100">
-                  <td className="py-4 pr-4">
-                    <div className="w-12 h-12 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
-                      {p.image ? (
-                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+          <div className="flex-1 overflow-y-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="text-gray-400 text-xs tracking-widest uppercase">
+                  <th className="pb-3 pr-4 font-semibold">Image</th>
+                  <th className="pb-3 pr-4 font-semibold">Name</th>
+                  <th className="pb-3 pr-4 font-semibold">Category</th>
+                  <th className="pb-3 pr-4 font-semibold">Price</th>
+                  <th className="pb-3 pr-4 font-semibold">Stock</th>
+                  <th className="pb-3 pr-4 font-semibold">Sizes</th>
+                  <th className="pb-3 pr-4 font-semibold">Status</th>
+                  <th className="pb-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((p) => (
+                  <tr key={p.id} className="border-t border-gray-100">
+                    <td className="py-4 pr-4">
+                      <div className="w-12 h-12 rounded-md bg-gray-100 overflow-hidden flex items-center justify-center">
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-gray-300 text-xl">👟</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="pr-4 font-semibold text-[#2b1a0e]">
+                      {p.name}
+                    </td>
+                    <td className="pr-4 text-gray-500">{p.category}</td>
+                    <td className="pr-4 font-semibold text-[#2b1a0e]">
+                      ₱{p.price.toLocaleString()}
+                    </td>
+                    <td className="pr-4 text-gray-700">{p.stock}</td>
+                    <td className="pr-4 text-gray-500 text-xs">
+                      {p.sizes && p.sizes.length > 0 ? (
+                        p.sizes.join(", ")
                       ) : (
-                        <span className="text-gray-300 text-xl">👟</span>
+                        <span className="text-gray-300">—</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="pr-4 font-semibold text-[#2b1a0e]">{p.name}</td>
-                  <td className="pr-4 text-gray-500">{p.category}</td>
-                  <td className="pr-4 font-semibold text-[#2b1a0e]">₱{p.price.toLocaleString()}</td>
-                  <td className="pr-4 text-gray-700">{p.stock}</td>
-                  <td className="pr-4 text-gray-500 text-xs">
-                    {p.sizes && p.sizes.length > 0
-                      ? p.sizes.join(", ")
-                      : <span className="text-gray-300">—</span>
-                    }
-                  </td>
-                  <td className="pr-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusStyles[p.status]}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex gap-3 items-center">
-                      <button
-                        onClick={() => openEditModal(p)}
-                        className="text-amber-500 hover:text-amber-700 transition"
-                        title="Edit product"
+                    </td>
+                    <td className="pr-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusStyles[p.status]}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="text-red-400 hover:text-red-600 transition"
-                        title="Delete product"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-10 text-center text-gray-400 text-sm">No products found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex gap-3 items-center">
+                        <button
+                          onClick={() => openEditModal(p)}
+                          className="text-amber-500 hover:text-amber-700 transition"
+                          title="Edit product"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="text-red-400 hover:text-red-600 transition"
+                          title="Delete product"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredProducts.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="py-10 text-center text-gray-400 text-sm"
+                    >
+                      No products found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -479,7 +544,9 @@ export default function ProductsPage() {
             <div className="space-y-4">
               {/* Product Name */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">Product Name</label>
+                <label className="text-sm text-gray-500 mb-1 block">
+                  Product Name
+                </label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -490,27 +557,35 @@ export default function ProductsPage() {
               {/* Category + Price */}
               <div className="flex gap-4">
                 <div className="w-1/2">
-                  <label className="text-sm text-gray-500 mb-1 block">Category</label>
+                  <label className="text-sm text-gray-500 mb-1 block">
+                    Category
+                  </label>
                   <div className="relative">
                     <select
                       value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      onChange={(e) =>
+                        setForm({ ...form, category: e.target.value })
+                      }
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-[#2b1a0e]/20 bg-white"
                     >
                       <option>Men</option>
                       <option>Women</option>
-                      <option>Formal</option>
-                      <option>Casual</option>
                     </select>
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▾</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">
+                      ▾
+                    </span>
                   </div>
                 </div>
                 <div className="w-1/2">
-                  <label className="text-sm text-gray-500 mb-1 block">Price (₱)</label>
+                  <label className="text-sm text-gray-500 mb-1 block">
+                    Price (₱)
+                  </label>
                   <input
                     type="number"
                     value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, price: e.target.value })
+                    }
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2b1a0e]/20"
                   />
                 </div>
@@ -518,7 +593,9 @@ export default function ProductsPage() {
 
               {/* Stock */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">Stock</label>
+                <label className="text-sm text-gray-500 mb-1 block">
+                  Stock
+                </label>
                 <input
                   type="number"
                   value={form.stock}
@@ -531,7 +608,9 @@ export default function ProductsPage() {
               <div>
                 <label className="text-sm text-gray-500 mb-2 block">
                   Available Sizes (EU)
-                  <span className="ml-2 text-xs text-gray-400">— click to toggle on/off</span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    — click to toggle on/off
+                  </span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {ALL_SIZES.map((size) => {
@@ -542,9 +621,10 @@ export default function ProductsPage() {
                         type="button"
                         onClick={() => toggleSize(size)}
                         className={`w-11 h-11 rounded-lg text-xs font-semibold border transition-all
-                          ${active
-                            ? "bg-[#2b1a0e] text-white border-[#2b1a0e] scale-105"
-                            : "bg-white text-gray-500 border-gray-200 hover:border-[#2b1a0e]/50 hover:text-[#2b1a0e]"
+                          ${
+                            active
+                              ? "bg-[#2b1a0e] text-white border-[#2b1a0e] scale-105"
+                              : "bg-white text-gray-500 border-gray-200 hover:border-[#2b1a0e]/50 hover:text-[#2b1a0e]"
                           }`}
                       >
                         {size}
@@ -557,23 +637,32 @@ export default function ProductsPage() {
                     Selected: EU {selectedSizes.join(", ")}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-gray-300">No sizes selected yet</p>
+                  <p className="mt-2 text-xs text-gray-300">
+                    No sizes selected yet
+                  </p>
                 )}
               </div>
 
               {/* Image Upload */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">Product Image</label>
+                <label className="text-sm text-gray-500 mb-1 block">
+                  Product Image
+                </label>
 
                 {imagePreview && (
                   <div className="mb-3 w-24 h-24 rounded-lg overflow-hidden border border-gray-200 relative">
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
                     <button
                       onClick={() => {
                         setImageFile(null);
                         setImagePreview("");
                         setForm((prev) => ({ ...prev, imageUrl: "" }));
-                        if (fileInputRef.current) fileInputRef.current.value = "";
+                        if (fileInputRef.current)
+                          fileInputRef.current.value = "";
                       }}
                       className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                     >
@@ -586,11 +675,24 @@ export default function ProductsPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-3 border-2 border-dashed border-gray-200 rounded-lg px-4 py-3 cursor-pointer hover:border-[#2b1a0e]/40 hover:bg-gray-50 transition"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                   <span className="text-sm text-gray-400">
-                    {imageFile ? imageFile.name : "Click to choose an image from your desktop"}
+                    {imageFile
+                      ? imageFile.name
+                      : "Click to choose an image from your desktop"}
                   </span>
                 </div>
                 <input
@@ -620,10 +722,14 @@ export default function ProductsPage() {
 
               {/* Description */}
               <div>
-                <label className="text-sm text-gray-500 mb-1 block">Description</label>
+                <label className="text-sm text-gray-500 mb-1 block">
+                  Description
+                </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-[#2b1a0e]/20"
                 />
               </div>
@@ -643,12 +749,32 @@ export default function ProductsPage() {
                 className="bg-[#2b1a0e] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#3d2510] transition disabled:opacity-60 flex items-center gap-2"
               >
                 {saving && (
-                  <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
                   </svg>
                 )}
-                {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
+                {saving
+                  ? "Saving…"
+                  : editingProduct
+                    ? "Save Changes"
+                    : "Add Product"}
               </button>
             </div>
           </div>

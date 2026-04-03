@@ -104,7 +104,7 @@ export default function ContactPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Marven Panoringan"
+                      placeholder="Fullname"
                       style={{
                         width: "100%",
                         backgroundColor: "#faf7f4",
@@ -149,7 +149,7 @@ export default function ContactPage() {
                     />
                     <input
                       type="email"
-                      placeholder="marven@example.com"
+                      placeholder="email"
                       style={{
                         width: "100%",
                         backgroundColor: "#faf7f4",

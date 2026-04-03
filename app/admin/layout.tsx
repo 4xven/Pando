@@ -7,17 +7,22 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-   <div className="flex min-h-screen bg-[#F5F5F5] overflow-hidden">
+    <div className="flex h-screen bg-[#F5F5F5] overflow-hidden">
+      
       {/* Sidebar */}
       <Sidebar />
 
       {/* Right Section */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Header */}
+      <div className="flex flex-col flex-1 min-w-0 h-full">
+        
+        {/* Header (fixed height) */}
         <Header />
 
-        {/* Page Content */}
-        <main className="p-6 flex-1">{children}</main>
+        {/* Scrollable Content */}
+        <main className="p-6 flex-1 overflow-y-auto">
+          {children}
+        </main>
+
       </div>
     </div>
   );

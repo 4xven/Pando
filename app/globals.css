@@ -15,8 +15,9 @@ body {
 
 /* HEADER */
 .header {
-  position: absolute;
+  position: sticky;
   top: 0;
+  z-index: 1000;
   width: 100%;
   padding: 24px 80px; /* more breathing space */
   z-index: 100;
@@ -890,7 +891,7 @@ body {
 
 /* ── HERO STRIP ── */
 .profile-hero {
-  padding: 100px 80px 40px;
+  padding: 50px 80px 50px;
   background: linear-gradient(135deg, #3a2414, #5a3a21);
   color: #f5e6d3;
   display: flex;

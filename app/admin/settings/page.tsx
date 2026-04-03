@@ -1,41 +1,157 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { auth, db } from "../../lib/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  updateEmail as fbUpdateEmail,
+  updateProfile as fbUpdateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  User,
+} from "firebase/auth";
+
+interface ProfileForm {
+  name: string;
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
 
 export default function SettingsPage() {
-  const [profileForm, setProfileForm] = useState({
-    name: "Admin User",
-    email: "admin@pando.com",
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    name: "",
+    email: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
-  const [storeForm, setStoreForm] = useState({
-    storeName: "Pando Shoe Store",
-    address: "TIP Quezon City, Local Devs",
-    phone: "+63 912 345 6789",
-    email: "contact@pando.com",
-    logoUrl: "",
-  });
-
   const [profileSaved, setProfileSaved] = useState(false);
-  const [storeSaved, setStoreSaved] = useState(false);
 
-  const handleProfileSave = () => {
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2000);
-  };
+  // Fetch admin user info on mount
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
 
-  const handleStoreSave = () => {
-    setStoreSaved(true);
-    setTimeout(() => setStoreSaved(false), 2000);
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setProfileForm((prev) => ({
+          ...prev,
+          name: data.name || "",
+          email: data.email || user.email || "",
+        }));
+      }
+    };
+
+    fetchAdminData();
+  }, []);
+
+  const handleProfileSave = async () => {
+    try {
+      const user: User | null = auth.currentUser;
+      if (!user) return alert("No admin logged in.");
+
+      // Update name only
+      if (profileForm.name !== user.displayName) {
+        await fbUpdateProfile(user, { displayName: profileForm.name });
+        await updateDoc(doc(db, "users", user.uid), { name: profileForm.name });
+      }
+
+      // Update email
+      if (profileForm.email !== user.email) {
+        if (!profileForm.currentPassword) {
+          return alert(
+            "To change email, please enter your current password."
+          );
+        }
+        const credential = EmailAuthProvider.credential(
+          user.email!,
+          profileForm.currentPassword
+        );
+        await reauthenticateWithCredential(user, credential);
+
+        await fbUpdateEmail(user, profileForm.email);
+        await updateDoc(doc(db, "users", user.uid), { email: profileForm.email });
+
+        alert(
+          "Email updated successfully. For security, you will be logged out."
+        );
+        await auth.signOut();
+        window.location.href = "/login";
+        return;
+      }
+
+      // Update password
+      if (profileForm.newPassword) {
+        if (profileForm.newPassword !== profileForm.confirmPassword) {
+          return alert("New password and confirm password do not match.");
+        }
+        if (!profileForm.currentPassword) {
+          return alert("Please enter current password to change password.");
+        }
+
+        const credential = EmailAuthProvider.credential(
+          user.email!,
+          profileForm.currentPassword
+        );
+        await reauthenticateWithCredential(user, credential);
+
+        await updatePassword(user, profileForm.newPassword);
+
+        alert(
+          "Password updated successfully. For security, you will be logged out."
+        );
+        await auth.signOut();
+        window.location.href = "/login";
+        return;
+      }
+
+      // Success feedback for name update only
+      if (profileForm.name !== user.displayName) {
+        setProfileSaved(true);
+        setTimeout(() => setProfileSaved(false), 2000);
+      }
+
+      // Clear password fields
+      setProfileForm((prev) => ({
+        ...prev,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+    } catch (error: unknown) {
+      console.log(error);
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as any).code === "string"
+      ) {
+        const errCode = (error as any).code;
+        if (errCode === "auth/requires-recent-login") {
+          alert(
+            "Please log out and log in again to update sensitive information."
+          );
+        } else if (errCode === "auth/id-token-expired") {
+          alert("Session expired. Please refresh the page or log in again.");
+        } else {
+          alert((error as any).message || "Something went wrong while saving profile.");
+        }
+      } else {
+        alert("Something went wrong while saving profile.");
+      }
+    }
   };
 
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "87vh",
         backgroundColor: "#f0ece4",
         fontFamily: "'Georgia', 'Times New Roman', serif",
         padding: "40px 32px",
@@ -184,100 +300,6 @@ export default function SettingsPage() {
             }}
           >
             {profileSaved ? "Saved ✓" : "Save Profile"}
-          </button>
-        </div>
-      </div>
-
-      {/* Store Settings Card */}
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          padding: "32px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          border: "1px solid #e8e0d4",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "16px",
-            fontWeight: "700",
-            color: "#2c2118",
-            marginBottom: "24px",
-            marginTop: 0,
-          }}
-        >
-          Store Settings
-        </h2>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={labelStyle}>Store Name</label>
-          <input
-            style={inputStyle}
-            value={storeForm.storeName}
-            onChange={(e) =>
-              setStoreForm({ ...storeForm, storeName: e.target.value })
-            }
-          />
-        </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={labelStyle}>Address</label>
-          <input
-            style={inputStyle}
-            value={storeForm.address}
-            onChange={(e) =>
-              setStoreForm({ ...storeForm, address: e.target.value })
-            }
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: "20px", marginBottom: "16px" }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Phone</label>
-            <input
-              style={inputStyle}
-              value={storeForm.phone}
-              onChange={(e) =>
-                setStoreForm({ ...storeForm, phone: e.target.value })
-              }
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Email</label>
-            <input
-              style={inputStyle}
-              type="email"
-              value={storeForm.email}
-              onChange={(e) =>
-                setStoreForm({ ...storeForm, email: e.target.value })
-              }
-            />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: "24px" }}>
-          <label style={labelStyle}>Logo URL</label>
-          <input
-            style={inputStyle}
-            placeholder="https://example.com/logo.png"
-            value={storeForm.logoUrl}
-            onChange={(e) =>
-              setStoreForm({ ...storeForm, logoUrl: e.target.value })
-            }
-          />
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={handleStoreSave}
-            style={{
-              ...buttonStyle,
-              backgroundColor: storeSaved ? "#4a7c59" : "#2c2118",
-              transition: "background-color 0.3s ease",
-            }}
-          >
-            {storeSaved ? "Saved ✓" : "Save Store Settings"}
           </button>
         </div>
       </div>

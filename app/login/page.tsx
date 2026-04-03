@@ -11,7 +11,7 @@ import { auth, db } from "../lib/firebase";
 import { useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -198,24 +200,39 @@ if (role === "admin") {
                 </div>
               </div>
 
-              <div className="pando-field">
-                <div className="pando-label-row">
-                  <label className="pando-label">Password</label>
-                  {isLogin && <button type="button" className="pando-forgot">Forgot?</button>}
-                </div>
-                <div className="pando-input-wrap">
-                  <span className="pando-input-icon"><Lock size={14} /></span>
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="pando-input"
-                  />
-                </div>
-              </div>
+             <div className="pando-field">
+  <div className="pando-label-row">
+    <label className="pando-label">Password</label>
+    {isLogin && <button type="button" className="pando-forgot">Forgot?</button>}
+  </div>
+  <div className="pando-input-wrap" style={{ position: "relative" }}>
+    <span className="pando-input-icon"><Lock size={14} /></span>
+    <input
+      type={showPassword ? "text" : "password"}
+      name="password"
+      placeholder="Password"
+      value={formData.password}
+      onChange={handleChange}
+      required
+      className="pando-input"
+      style={{ paddingRight: "2rem" }} // ✅ space for the eye icon
+    />
+    <span
+      onClick={() => setShowPassword(!showPassword)}
+      style={{
+        position: "absolute",
+        right: "0.9rem", 
+        top: "50%",
+        transform: "translateY(-50%)",
+        cursor: "pointer",
+        zIndex: 10,
+        color: "#5558",
+      }}
+    >
+      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </span>
+  </div>
+</div>
 
               <motion.button
                 type="submit"

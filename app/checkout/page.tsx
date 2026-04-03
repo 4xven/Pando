@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Truck, MapPin } from "lucide-react";
+import { ArrowLeft, Truck, MapPin, Loader2, CheckCircle } from "lucide-react";
 import Header from "../components/shared/header";
 import Footer from "../components/shared/footer";
-import { auth } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  collection,
+  serverTimestamp,
+  runTransaction,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -39,7 +46,7 @@ interface ShippingForm {
 
 const SHIPPING_FEE = 250;
 
-// ── Field component (outside CheckoutPage to avoid react-hooks/static-components) ──
+// ── Field component ───────────────────────────────────────────────────────────
 interface FieldProps {
   label: string;
   field: keyof ShippingForm;
@@ -117,12 +124,13 @@ function Field({
   );
 }
 
-// ── OrderSummary component (outside CheckoutPage) ─────────────────────────────
+// ── OrderSummary component ────────────────────────────────────────────────────
 interface OrderSummaryProps {
   cart: CartItem[];
   subtotal: number;
   total: number;
   placing: boolean;
+  success: boolean;
   onPlaceOrder: () => void;
   formatPrice: (n: number) => string;
 }
@@ -132,6 +140,7 @@ function OrderSummary({
   subtotal,
   total,
   placing,
+  success,
   onPlaceOrder,
   formatPrice,
 }: OrderSummaryProps) {
@@ -150,13 +159,11 @@ function OrderSummary({
           fontSize: "1.15rem",
           fontWeight: 700,
           fontFamily: "Georgia, serif",
-          letterSpacing: "0.5px",
         }}
       >
         Order Summary
       </h3>
 
-      {/* Cart Items */}
       <div
         style={{
           display: "flex",
@@ -260,7 +267,7 @@ function OrderSummary({
           }}
         >
           <span style={{ color: "rgba(245,230,211,0.65)" }}>Subtotal</span>
-          <span style={{ color: "#f5e6d3" }}>{formatPrice(subtotal)}</span>
+          <span>{formatPrice(subtotal)}</span>
         </div>
         <div
           style={{
@@ -270,7 +277,7 @@ function OrderSummary({
           }}
         >
           <span style={{ color: "rgba(245,230,211,0.65)" }}>Shipping</span>
-          <span style={{ color: "#f5e6d3" }}>{formatPrice(SHIPPING_FEE)}</span>
+          <span>{formatPrice(SHIPPING_FEE)}</span>
         </div>
       </div>
 
@@ -297,7 +304,6 @@ function OrderSummary({
             fontSize: "1.6rem",
             fontWeight: 700,
             fontFamily: "Georgia, serif",
-            color: "#f5e6d3",
           }}
         >
           {formatPrice(total)}
@@ -306,12 +312,14 @@ function OrderSummary({
 
       <button
         onClick={onPlaceOrder}
-        disabled={placing || cart.length === 0}
+        disabled={placing || cart.length === 0 || success}
         style={{
           width: "100%",
-          background: placing
-            ? "#7a5a3a"
-            : "linear-gradient(135deg, #8a5a3a, #a07050)",
+          background: success
+            ? "#2d6a4f"
+            : placing
+              ? "#7a5a3a"
+              : "linear-gradient(135deg, #8a5a3a, #a07050)",
           color: "#fff",
           border: "none",
           borderRadius: "12px",
@@ -320,8 +328,9 @@ function OrderSummary({
           fontWeight: 700,
           letterSpacing: "2px",
           textTransform: "uppercase",
-          cursor: placing || cart.length === 0 ? "not-allowed" : "pointer",
-          transition: "opacity 0.2s",
+          cursor:
+            placing || cart.length === 0 || success ? "not-allowed" : "pointer",
+          transition: "opacity 0.2s, background 0.3s",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -329,13 +338,23 @@ function OrderSummary({
           fontFamily: "Arial, sans-serif",
         }}
         onMouseEnter={(e) => {
-          if (!placing) e.currentTarget.style.opacity = "0.88";
+          if (!placing && !success) e.currentTarget.style.opacity = "0.88";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "1";
         }}
       >
-        {placing ? "Placing Order…" : "Place Order →"}
+        {success ? (
+          <>
+            <CheckCircle size={15} /> Order Placed!
+          </>
+        ) : placing ? (
+          <>
+            <Loader2 size={14} /> Placing Order…
+          </>
+        ) : (
+          "Place Order →"
+        )}
       </button>
 
       <p
@@ -359,6 +378,10 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [placing, setPlacing] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [currentUid, setCurrentUid] = useState<string | undefined>();
+  const [profileLoading, setProfileLoading] = useState(true);
+
   const [form, setForm] = useState<ShippingForm>({
     firstName: "",
     lastName: "",
@@ -371,44 +394,65 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<Partial<ShippingForm>>({});
 
-  // Load checkout cart (may be a subset if user selected items on cart page)
+  // ── Load cart + pre-fill from Firestore profile ───────────────────────────
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      const cartKey = user ? `pando_cart_${user.uid}` : "pando_cart_guest";
-      const checkoutKey = user
-        ? `pando_checkout_${user.uid}`
-        : "pando_checkout_guest";
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      const uid = user?.uid;
+      setCurrentUid(uid);
 
+      // Cart
+      const cartKey = uid ? `pando_cart_${uid}` : "pando_cart_guest";
+      const checkoutKey = uid
+        ? `pando_checkout_${uid}`
+        : "pando_checkout_guest";
       try {
-        // Prefer checkout-specific items (set by cart page when items are selected)
         const checkoutItems = localStorage.getItem(checkoutKey);
-        if (checkoutItems) {
-          setCart(JSON.parse(checkoutItems));
-        } else {
-          // Fallback: use full cart
-          const saved = localStorage.getItem(cartKey);
-          setCart(saved ? JSON.parse(saved) : []);
-        }
+        setCart(
+          checkoutItems
+            ? JSON.parse(checkoutItems)
+            : JSON.parse(localStorage.getItem(cartKey) ?? "[]"),
+        );
       } catch {
         setCart([]);
       }
-    });
-    return () => unsub();
-  }, []);
 
-  // Pre-fill email from Firebase auth
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user?.email) {
-        setForm((prev) => ({ ...prev, email: user.email ?? "" }));
+      // Pre-fill from Firestore
+      if (uid) {
+        try {
+          const snap = await getDoc(doc(db, "users", uid));
+          if (snap.exists()) {
+            const d = snap.data();
+            const fullName: string = d.name ?? user?.displayName ?? "";
+            const parts = fullName.trim().split(" ");
+            const first = parts[0] ?? "";
+            const last = parts.slice(1).join(" ");
+            setForm({
+              firstName: first,
+              lastName: last,
+              email: user?.email ?? d.email ?? "",
+              phone: d.phone ?? "",
+              street: d.street ?? "",
+              city: d.city ?? "",
+              province: d.province ?? "",
+              postal: d.postal ?? "",
+            });
+          } else if (user?.email) {
+            setForm((p) => ({ ...p, email: user.email ?? "" }));
+          }
+        } catch {
+          // user fills manually
+        }
+      } else if (user?.email) {
+        setForm((p) => ({ ...p, email: user.email ?? "" }));
       }
+
+      setProfileLoading(false);
     });
     return () => unsub();
   }, []);
 
   const formatPrice = (n: number) =>
     "₱" + new Intl.NumberFormat("en-PH").format(n);
-
   const subtotal = cart.reduce(
     (sum, i) => sum + i.product.price * i.quantity,
     0,
@@ -435,19 +479,112 @@ export default function CheckoutPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  // ── Place order with stock deduction transaction ───────────────────────────
   const handlePlaceOrder = async () => {
-    if (!validate()) return;
+    if (!validate() || cart.length === 0) return;
     setPlacing(true);
-    // TODO: integrate with Firestore / PayMongo / etc.
-    await new Promise((r) => setTimeout(r, 1500));
-    alert("Order placed! (integration coming soon)");
-    setPlacing(false);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        // Read all product docs first
+        // ✅ GROUP ITEMS FIRST (IMPORTANT FIX)
+        const grouped: Record<string, number> = {};
+
+        for (const item of cart) {
+          if (!grouped[item.product.id]) {
+            grouped[item.product.id] = 0;
+          }
+          grouped[item.product.id] += item.quantity;
+        }
+
+        // Get unique product IDs
+        const productIds = Object.keys(grouped);
+
+        // Create refs
+        const productRefs = productIds.map((id) => doc(db, "products", id));
+
+        // Read all products
+        const snaps = await Promise.all(
+          productRefs.map((ref) => transaction.get(ref)),
+        );
+
+        // ✅ VALIDATE STOCK
+        for (let i = 0; i < productIds.length; i++) {
+          const snap = snaps[i];
+          const totalQty = grouped[productIds[i]];
+
+          if (!snap.exists()) {
+            throw new Error("Product no longer exists.");
+          }
+
+          const currentStock = snap.data()?.stock ?? 0;
+
+          if (currentStock < totalQty) {
+            throw new Error(`Only ${currentStock} left in stock.`);
+          }
+        }
+
+        // ✅ DEDUCT STOCK (CORRECT NOW)
+        for (let i = 0; i < productIds.length; i++) {
+          const snap = snaps[i];
+          const totalQty = grouped[productIds[i]];
+
+          const newStock = (snap.data()?.stock ?? 0) - totalQty;
+
+          transaction.update(productRefs[i], {
+            stock: newStock,
+            status:
+              newStock === 0
+                ? "Out of Stock"
+                : newStock <= 5
+                  ? "Low Stock"
+                  : "In Stock",
+          });
+        }
+
+        // Save order to Firestore
+        const orderRef = doc(collection(db, "orders"));
+        transaction.set(orderRef, {
+          userId: currentUid ?? "guest",
+          shipping: form,
+          items: cart.map((item) => ({
+            productId: item.product.id,
+            name: item.product.name,
+            price: item.product.price,
+            size: item.size,
+            quantity: item.quantity,
+            image: item.product.image,
+          })),
+          subtotal,
+          shippingFee: SHIPPING_FEE,
+          total,
+          paymentMethod: "COD",
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
+      });
+
+      // Clear localStorage
+      const suffix = currentUid ? currentUid : "guest";
+      localStorage.removeItem(`pando_checkout_${suffix}`);
+      localStorage.removeItem(`pando_cart_${suffix}`);
+
+      setSuccess(true);
+      setTimeout(() => router.push("/profile"), 2500);
+    } catch (err: unknown) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to place order. Try again.",
+      );
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
     <main>
       <Header />
-
       <div
         style={{
           minHeight: "100vh",
@@ -457,7 +594,28 @@ export default function CheckoutPage() {
         }}
       >
         <div style={{ maxWidth: "1060px", margin: "0 auto" }}>
-          {/* Back link + Title */}
+          {/* Success banner */}
+          {success && (
+            <div
+              style={{
+                background: "#d1fae5",
+                color: "#065f46",
+                borderRadius: 12,
+                padding: "16px 24px",
+                marginBottom: 24,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                fontWeight: 600,
+                fontSize: "0.9rem",
+              }}
+            >
+              <CheckCircle size={20} />
+              Order placed! Redirecting to your profile…
+            </div>
+          )}
+
+          {/* Back + Title */}
           <div style={{ marginBottom: "32px" }}>
             <Link
               href="/cart"
@@ -471,15 +629,12 @@ export default function CheckoutPage() {
                 fontWeight: 500,
                 marginBottom: "14px",
                 opacity: 0.75,
-                transition: "opacity 0.2s",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
             >
-              <ArrowLeft size={16} />
-              Back to Cart
+              <ArrowLeft size={16} /> Back to Cart
             </Link>
-
             <h1
               style={{
                 fontSize: "2.4rem",
@@ -491,9 +646,22 @@ export default function CheckoutPage() {
             >
               Checkout
             </h1>
+            {profileLoading && (
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#9a8070",
+                  marginTop: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Loader2 size={13} /> Loading your saved details…
+              </p>
+            )}
           </div>
 
-          {/* 2-column grid */}
           <div
             style={{
               display: "grid",
@@ -502,11 +670,11 @@ export default function CheckoutPage() {
               alignItems: "start",
             }}
           >
-            {/* LEFT COLUMN */}
+            {/* LEFT */}
             <div
               style={{ display: "flex", flexDirection: "column", gap: "20px" }}
             >
-              {/* Shipping Information */}
+              {/* Shipping */}
               <div
                 style={{
                   background: "#fdf9f5",
@@ -517,7 +685,7 @@ export default function CheckoutPage() {
               >
                 <h2
                   style={{
-                    margin: "0 0 28px",
+                    margin: "0 0 6px",
                     fontSize: "1.1rem",
                     fontWeight: 700,
                     color: "#3C2415",
@@ -526,15 +694,22 @@ export default function CheckoutPage() {
                     gap: "10px",
                   }}
                 >
-                  <Truck size={18} color="#A0522D" />
-                  Shipping Information
+                  <Truck size={18} color="#A0522D" /> Shipping Information
                 </h2>
-
+                <p
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "#9a8070",
+                    margin: "0 0 24px",
+                  }}
+                >
+                  Auto-filled from your profile — edit if needed.
+                </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
                   <Field
                     label="First Name"
                     field="firstName"
-                    placeholder="First Name"
+                    placeholder="Juan"
                     half
                     value={form.firstName}
                     error={errors.firstName}
@@ -543,7 +718,7 @@ export default function CheckoutPage() {
                   <Field
                     label="Last Name"
                     field="lastName"
-                    placeholder="Last Name"
+                    placeholder="Dela Cruz"
                     half
                     value={form.lastName}
                     error={errors.lastName}
@@ -552,7 +727,7 @@ export default function CheckoutPage() {
                   <Field
                     label="Email Address"
                     field="email"
-                    placeholder="Email Account"
+                    placeholder="juan@example.com"
                     type="email"
                     value={form.email}
                     error={errors.email}
@@ -604,7 +779,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Method */}
+              {/* Payment */}
               <div
                 style={{
                   background: "#fdf9f5",
@@ -624,10 +799,8 @@ export default function CheckoutPage() {
                     gap: "10px",
                   }}
                 >
-                  <MapPin size={18} color="#A0522D" />
-                  Payment Method
+                  <MapPin size={18} color="#A0522D" /> Payment Method
                 </h2>
-
                 <div
                   style={{
                     border: "2px solid #A0522D",
@@ -654,7 +827,6 @@ export default function CheckoutPage() {
                   >
                     💵
                   </div>
-
                   <div style={{ flex: 1 }}>
                     <p
                       style={{
@@ -674,15 +846,13 @@ export default function CheckoutPage() {
                         lineHeight: 1.55,
                       }}
                     >
-                      Pay in cash when your order arrives at your doorstep.
-                      Please prepare the exact amount of{" "}
+                      Pay in cash at delivery. Please prepare{" "}
                       <strong style={{ color: "#A0522D" }}>
                         {formatPrice(total)}
                       </strong>{" "}
-                      to ensure a smooth transaction.
+                      exactly.
                     </p>
                   </div>
-
                   <div
                     style={{
                       width: "20px",
@@ -707,13 +877,11 @@ export default function CheckoutPage() {
                     />
                   </div>
                 </div>
-
                 <p
                   style={{
                     fontSize: "0.75rem",
                     color: "#B0A090",
                     marginTop: "14px",
-                    letterSpacing: "0.5px",
                   }}
                 >
                   More payment methods (GCash, Credit Card) coming soon.
@@ -721,13 +889,14 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN — sticky order summary */}
+            {/* RIGHT */}
             <div style={{ position: "sticky", top: "100px" }}>
               <OrderSummary
                 cart={cart}
                 subtotal={subtotal}
                 total={total}
                 placing={placing}
+                success={success}
                 onPlaceOrder={handlePlaceOrder}
                 formatPrice={formatPrice}
               />
@@ -737,16 +906,11 @@ export default function CheckoutPage() {
 
         <style>{`
           @media (max-width: 820px) {
-            div[style*="grid-template-columns: 1fr 360px"] {
-              grid-template-columns: 1fr !important;
-            }
-            div[style*="position: sticky"] {
-              position: static !important;
-            }
+            div[style*="grid-template-columns: 1fr 360px"] { grid-template-columns: 1fr !important; }
+            div[style*="position: sticky"] { position: static !important; }
           }
         `}</style>
       </div>
-
       <Footer />
     </main>
   );
