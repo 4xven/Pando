@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db, auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { ShoppingCart, Check, X } from "lucide-react";
+import { ShoppingCart, Check, X, Lock } from "lucide-react";
 
 type FilterType = "All" | "Men" | "Women";
 
@@ -115,6 +115,8 @@ export default function ProductPage() {
   const [sizeError, setSizeError] = useState(false);
   const [toast, setToast] = useState({ message: "", visible: false });
   const [toastTimer, setToastTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [isUser, setIsUser] = useState<boolean | null>(null); // null = checking, false = not logged in, true = logged in
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const getCartKey = useCallback(() => {
     const user = auth.currentUser;
@@ -136,8 +138,10 @@ export default function ProductPage() {
     } catch { return []; }
   });
 
+  // Check if user is authenticated
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
+      setIsUser(!!user);
       const key = user ? `pando_cart_${user.uid}` : "pando_cart_guest";
       try {
         const saved = localStorage.getItem(key);
@@ -193,29 +197,38 @@ export default function ProductPage() {
     [toastTimer]
   );
 
-const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-const openModal = (product: Product) => {
-  setSelectedProduct(product);
-  setSelectedSize(null);
-  setSizeError(false);
-  setIsModalOpen(true); // trigger effect
-};
-
-const closeModal = () => {
-  setSelectedProduct(null);
-  setSelectedSize(null);
-  setSizeError(false);
-  setIsModalOpen(false); // trigger effect
-};
-
-// Side effect for body scroll lock
-useEffect(() => {
-  document.body.style.overflow = isModalOpen ? "hidden" : "";
-  return () => {
-    document.body.style.overflow = ""; // cleanup
+  const openModal = (product: Product) => {
+    // Check if user is authenticated
+    if (!isUser) {
+      setShowLoginModal(true);
+      return;
+    }
+    setSelectedProduct(product);
+    setSelectedSize(null);
+    setSizeError(false);
+    setIsModalOpen(true);
   };
-}, [isModalOpen]);
+
+  const closeModal = () => {
+    setSelectedProduct(null);
+    setSelectedSize(null);
+    setSizeError(false);
+    setIsModalOpen(false);
+  };
+
+  const closeLoginModal = () => {
+    setShowLoginModal(false);
+  };
+
+  // Side effect for body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen || showLoginModal ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen, showLoginModal]);
 
   const buildUpdatedCart = (prev: CartItem[], product: Product, size: number, qty = 1): CartItem[] => {
     const existing = prev.find((i) => i.product.id === product.id && i.size === size);
@@ -796,6 +809,125 @@ useEffect(() => {
         .prod-btn-buy:disabled { background: #b0a090; cursor: default; }
         .prod-btn-buy:disabled:hover { background: #b0a090; }
 
+        /* ── LOGIN MODAL ── */
+        .login-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15,7,2,0.72);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 600;
+          padding: 20px;
+          backdrop-filter: blur(4px);
+        }
+        .login-modal {
+          background: var(--cream);
+          width: 100%;
+          max-width: 420px;
+          padding: 48px 36px;
+          position: relative;
+          box-shadow: 0 30px 80px rgba(15,7,2,0.5);
+          border: 1px solid rgba(184,134,78,0.2);
+        }
+        .login-modal-close {
+          position: absolute;
+          top: 20px; right: 20px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--brown-dark);
+          transition: color 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+        }
+        .login-modal-close:hover {
+          color: var(--gold);
+        }
+        .login-modal-header {
+          text-align: center;
+          margin-bottom: 32px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .login-modal-icon {
+          width: 56px;
+          height: 56px;
+          background: rgba(184,134,78,0.1);
+          border: 1px solid var(--gold);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 2px;
+        }
+        .login-modal-title {
+          font-family: var(--font-display);
+          font-size: 1.6rem;
+          font-weight: 300;
+          color: var(--brown-dark);
+          line-height: 1.2;
+        }
+        .login-modal-subtitle {
+          font-family: var(--font-body);
+          font-size: 0.85rem;
+          color: var(--brown-light);
+          line-height: 1.6;
+          text-align: center;
+          margin-bottom: 24px;
+        }
+        .login-modal-divider {
+          width: 100%;
+          height: 1px;
+          background: rgba(184,134,78,0.15);
+          margin-bottom: 28px;
+        }
+        .login-modal-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .login-btn-primary {
+          font-family: var(--font-body);
+          font-size: 0.7rem;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          padding: 14px 24px;
+          border: 1px solid transparent;
+          background: var(--brown-dark);
+          color: #f5ebe0;
+          cursor: pointer;
+          transition: all 0.25s;
+          width: 100%;
+        }
+        .login-btn-primary:hover {
+          background: var(--gold);
+          color: var(--brown-dark);
+        }
+        .login-btn-secondary {
+          font-family: var(--font-body);
+          font-size: 0.7rem;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          padding: 14px 24px;
+          border: 1px solid var(--brown-dark);
+          background: transparent;
+          color: var(--brown-dark);
+          cursor: pointer;
+          transition: all 0.25s;
+          width: 100%;
+        }
+        .login-btn-secondary:hover {
+          background: var(--brown-dark);
+          color: #f5ebe0;
+        }
+
         /* ── Empty / Loading ── */
         .prod-empty {
           text-align: center;
@@ -937,6 +1069,39 @@ useEffect(() => {
             </div>
           )}
         </div>
+
+        {/* ── LOGIN MODAL ── */}
+        {showLoginModal && (
+          <div className="login-modal-backdrop" onClick={closeLoginModal}>
+            <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="login-modal-close" onClick={closeLoginModal}>
+                <X size={18} />
+              </button>
+
+              <div className="login-modal-header">
+                <div className="login-modal-icon">
+                  <Lock size={28} color="var(--gold)" />
+                </div>
+                <h2 className="login-modal-title">Sign In Required</h2>
+              </div>
+
+              <p className="login-modal-subtitle">
+                Please sign in to your account to browse and purchase from our collection.
+              </p>
+
+              <div className="login-modal-divider" />
+
+              <div className="login-modal-actions">
+                <button className="login-btn-primary" onClick={() => router.push("/login")}>
+                  Sign In
+                </button>
+                <button className="login-btn-secondary" onClick={() => router.push("/login")}>
+                  Create Account
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── MODAL ── */}
         {selectedProduct && (

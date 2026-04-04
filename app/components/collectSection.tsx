@@ -273,12 +273,12 @@ export default function CollectionSection({
           <div className="pc-corner tl" />
           <div className="pc-corner br" />
           <Image
-            src={image}
-            alt={heading}
-            fill
-            sizes="(max-width: 900px) 100vw, 50vw"
-            style={{ objectFit: "cover" }}
-          />
+  src={image}
+  alt={heading}
+  fill
+  sizes="(max-width: 900px) 100vw, 50vw"
+  style={{ objectFit: "contain", objectPosition: "center" }}
+/>
           <span className="pc-badge">Marikina · Est. 2015</span>
         </div>
 

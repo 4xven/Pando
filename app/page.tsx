@@ -120,7 +120,8 @@ export default function Home() {
         heading="Built for the man who values"
         headingItalic="craftsmanship."
         description="The men's collection features a sleek and refined design that reflects confidence and sophistication. With structured layouts, rich earthy tones, and bold presentation, the section highlights timeless footwear styles crafted for both comfort and class."
-        image="/male2.png"
+        image="/male5.png"
+        
         href="/product"
       />
 
@@ -130,7 +131,7 @@ export default function Home() {
         heading="Elegance in every stitch,"
         headingItalic="every step."
         description="The women's collection embraces elegance and simplicity with a soft, graceful presentation. Light tones, balanced spacing, and smooth rounded elements enhance the refined look of the footwear, offering a stylish and seamless browsing experience."
-        image="/female1.png"
+        image="/male4.png"
         href="/product"
         reverse
       />
