@@ -12,10 +12,21 @@
 
 .logo {
   padding: 24px;
-  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 2px;
+
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.8rem;
+  letter-spacing: 4px;
+  color: #f5ebe0;
+
+  display: flex;
+  justify-content: center;   /* horizontal center */
+  align-items: center;       /* vertical center (optional) */
+
+  text-align: center;        /* fallback */
+  transition: 0.3s ease;
 }
 
 .section {
@@ -46,29 +57,57 @@
 
   color: #e5e5e5;
   cursor: pointer;
-  transition: all 0.2s ease;
+
+  transition: all 0.25s ease;
 
   .icon {
     color: #cfcfcf;
+    transition: all 0.25s ease;
   }
 
   span {
     font-size: 15px;
     font-weight: 500;
+    transition: all 0.25s ease;
   }
 
+  /* 🔥 HEADER-LIKE HOVER */
   &:hover {
-    background: rgba(42, 25, 15, 0.7);
+    background: rgba(255, 255, 255, 0.05); /* lighter */
+    transform: translateX(4px); /* subtle motion */
+  }
+
+  &:hover .icon,
+  &:hover span {
+    color: #f5e6d3; /* same tone as header text */
   }
 }
 
+/* 🔥 ACTIVE STATE (premium, not flat) */
 .active {
-  background: #2a190f;
+  background: rgba(245, 183, 64, 0.12); /* soft gold tint */
   color: #f4b740;
+
+  box-shadow: 0 0 12px rgba(244, 183, 64, 0.15);
 
   .icon {
     color: #f4b740;
   }
+}
+
+/* ✨ LEFT ACCENT (like luxury UI) */
+.active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 4px;
+  height: 55%;
+  border-radius: 4px;
+
+  background: #f4b740;
 }
 
 .header {
@@ -186,3 +225,5 @@
     color: #000000;
   }
 }
+
+

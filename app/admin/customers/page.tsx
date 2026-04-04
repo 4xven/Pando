@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../../lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import {
@@ -24,6 +24,26 @@ interface Customer {
   role: "user" | "admin";
 }
 
+interface OrderItem {
+  productId: string;
+  name: string;
+  price: number;
+  size: number;
+  quantity: number;
+}
+
+interface Order {
+  id: string;
+  userId: string;
+  items: OrderItem[];
+  subtotal: number;
+  shippingFee: number;
+  total: number;
+  status: string;
+  paymentMethod: string;
+  createdAt: { seconds: number } | null;
+}
+
 type RoleFilter = "All" | "user" | "admin";
 type SortKey = keyof Pick<
   Customer,
@@ -33,6 +53,7 @@ type SortKey = keyof Pick<
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("All");
@@ -40,9 +61,14 @@ export default function CustomersPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // ── Firestore real-time listener ────────────────────────────────────────────
+  // ── Firestore real-time listeners ────────────────────────────────────────────
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+    let loadedCount = 0;
+    const checkDone = () => {
+      if (++loadedCount >= 2) setLoading(false);
+    };
+
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       const data: Customer[] = snap.docs.map((d) => {
         const raw = d.data();
         return {
@@ -50,27 +76,55 @@ export default function CustomersPage() {
           name: raw.name ?? "—",
           email: raw.email ?? "—",
           phone: raw.phone ?? "—",
-          totalOrders: raw.totalOrders ?? 0,
-          totalSpent: raw.totalSpent ?? 0,
           joinDate: raw.joinDate ?? raw.createdAt ?? "—",
           createdAt: raw.createdAt ?? "",
           role: raw.role ?? "user",
         };
       });
       setCustomers(data);
-      setLoading(false);
+      checkDone();
     });
-    return () => unsub();
+
+    const unsubOrders = onSnapshot(collection(db, "orders"), (snap) => {
+      const data: Order[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Order, "id">),
+      }));
+      setOrders(data);
+      checkDone();
+    });
+
+    return () => {
+      unsubUsers();
+      unsubOrders();
+    };
   }, []);
 
+  // ── Compute totalOrders & totalSpent from orders (like Reports page) ─────────
+  const customersWithTotals = useMemo(() => {
+    return customers.map((customer) => {
+      const deliveredOrders = orders.filter(
+        (o) => o.userId === customer.id && o.status === "delivered"
+      );
+      return {
+        ...customer,
+        totalOrders: deliveredOrders.length,
+        totalSpent: deliveredOrders.reduce(
+          (sum, o) => sum + (o.total ?? 0),
+          0
+        ),
+      };
+    });
+  }, [customers, orders]);
+
   // ── Derived stats ────────────────────────────────────────────────────────────
-  const totalUsers = customers.filter((c) => c.role === "user").length;
-  const totalAdmins = customers.filter((c) => c.role === "admin").length;
+  const totalUsers = customersWithTotals.filter((c) => c.role === "user").length;
+  const totalAdmins = customersWithTotals.filter((c) => c.role === "admin").length;
 
   const STAT_CARDS = [
     {
       label: "All Accounts",
-      value: customers.length,
+      value: customersWithTotals.length,
       icon: <Users size={20} color="#a07840" />,
       filter: "All" as RoleFilter,
     },
@@ -98,7 +152,7 @@ export default function CustomersPage() {
   };
 
   // ── Filtered + sorted list ───────────────────────────────────────────────────
-  const filtered = customers
+  const filtered = customersWithTotals
     .filter((c) => {
       const matchSearch =
         c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -584,7 +638,7 @@ export default function CustomersPage() {
                                   year: "numeric",
                                   month: "short",
                                   day: "numeric",
-                                },
+                                }
                               )
                             : "—"}
                         </td>
@@ -631,8 +685,8 @@ export default function CustomersPage() {
                                   value: formatPrice(
                                     Math.round(
                                       (customer.totalSpent ?? 0) /
-                                        (customer.totalOrders || 1),
-                                    ),
+                                        (customer.totalOrders || 1)
+                                    )
                                   ),
                                 },
                                 { label: "User ID", value: customer.id },
@@ -694,7 +748,7 @@ export default function CustomersPage() {
           }}
         >
           <span>
-            {filtered.length} of {customers.length} accounts
+            {filtered.length} of {customersWithTotals.length} accounts
             {roleFilter !== "All" && (
               <span
                 style={{ marginLeft: "6px", color: "#a07840", fontWeight: 700 }}

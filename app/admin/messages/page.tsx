@@ -508,6 +508,7 @@ export default function MessagesPage() {
                           style={{
                             background: "#f7f3ef",
                             borderRadius: "10px",
+                            marginTop: "15px",
                             padding: "12px 16px",
                           }}
                         >

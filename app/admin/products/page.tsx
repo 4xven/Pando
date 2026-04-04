@@ -254,10 +254,10 @@ export default function ProductsPage() {
   return (
     <div className="h-screen flex flex-col p-8 bg-[#f5f1ed] font-sans overflow-hidden">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6"   style={{ fontFamily: "Georgia, serif" }}>
         <div>
-          <h1 className="text-3xl font-bold text-[#2b1a0e]">
-            Product Management
+          <h1 className="text-3xl font-bold text-[#2b1a0e] font-family: Georgia, serif;">
+            Inventory Management
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Manage your shoe inventory

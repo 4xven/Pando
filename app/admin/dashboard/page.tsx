@@ -937,7 +937,7 @@ export default function DashboardPage() {
           <div>
             <h1
               style={{
-                fontSize: "1.5rem",
+                fontSize: "1.875rem",
                 fontWeight: 800,
                 color: "#1a0e06",
                 margin: "0 0 2px",

@@ -407,9 +407,9 @@ useEffect(() => {
         }
         .prod-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           gap: 20px;
-          max-width: 1400px;
+          max-width: 1800px;
           margin: 0 auto;
         }
 
@@ -422,6 +422,8 @@ useEffect(() => {
           position: relative;
           overflow: hidden;
           transition: transform 0.35s cubic-bezier(.22,1,.36,1);
+           width: 100%;
+  max-width: 580px; /* 👈 control how wide it can go */
         }
         .prod-card.oos { opacity: 0.5; cursor: not-allowed; }
         .prod-card:not(.oos):hover { transform: translateY(-4px); z-index: 2; }
@@ -430,7 +432,7 @@ useEffect(() => {
 
         .prod-card-img {
           width: 100%;
-          aspect-ratio: 3 / 4;
+          aspect-ratio: 9 / 9;
           background: #ede6db;
           overflow: hidden;
           position: relative;
